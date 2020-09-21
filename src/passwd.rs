@@ -110,17 +110,19 @@ fn parse_gecos(source: &str) -> Result<Gecos, &str> {
 impl Default for Passwd<'_> {
     fn default() -> Self {
         Passwd {
-            pw_name: Username { pw_name: "howdy" },
+            pw_name: Username {
+                pw_name: "defaultuser",
+            },
             pw_passwd: Password {
                 pw_passwd: "notencrypted",
             },
             pw_uid: Uid { pw_uid: 1001 },
             pw_gid: Gid { pw_gid: 1001 },
             pw_gecos: Gecos::Simple {
-                comment: "not done",
+                comment: "gecos default comment",
             },
             pw_dir: HomeDir {
-                pw_dir: "/home/test",
+                pw_dir: "/home/default",
             },
             pw_shell: ShellDir {
                 pw_shell: "/bin/bash",
@@ -197,5 +199,46 @@ impl Display for HomeDir<'_> {
 impl Display for ShellDir<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.pw_shell,)
+    }
+}
+
+#[test]
+fn default_user() {
+    let pwd = Passwd::default();
+    assert_eq!(pwd.pw_name.pw_name, "defaultuser");
+    assert_eq!(pwd.pw_dir.pw_dir, "/home/default");
+    assert_eq!(pwd.pw_uid.pw_uid, 1001);
+}
+
+#[test]
+fn test_new_from_string() {
+    let pwd =
+        Passwd::new_from_string("testuser:testpassword:1001:1001:testcomment:/home/test:/bin/test")
+            .unwrap();
+    let pwd2 =
+        Passwd::new_from_string("testuser:testpassword:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test")
+            .unwrap();
+    assert_eq!(pwd.pw_name.pw_name, "testuser");
+    assert_eq!(pwd.pw_dir.pw_dir, "/home/test");
+    assert_eq!(pwd.pw_uid.pw_uid, 1001);
+    match pwd.pw_gecos {
+        Gecos::Simple { comment } => assert_eq!(comment, "testcomment"),
+        _ => unreachable!(),
+    }
+    match pwd2.pw_gecos {
+        Gecos::Detail {
+            full_name,
+            room,
+            phone_work,
+            phone_home,
+            other,
+        } => {
+            assert_eq!(full_name, "full Name");
+            assert_eq!(room, "004");
+            assert_eq!(phone_work, "000342");
+            assert_eq!(phone_home, "001-2312");
+            assert_eq!(other, "myemail@test.com");
+        }
+        _ => unreachable!(),
     }
 }
