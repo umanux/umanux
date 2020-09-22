@@ -202,12 +202,42 @@ impl Display for ShellDir<'_> {
     }
 }
 
+// Tests ----------------------------------------------------------------------
+
 #[test]
-fn default_user() {
+fn test_default_user() {
     let pwd = Passwd::default();
     assert_eq!(pwd.pw_name.pw_name, "defaultuser");
     assert_eq!(pwd.pw_dir.pw_dir, "/home/default");
     assert_eq!(pwd.pw_uid.pw_uid, 1001);
+}
+
+#[test]
+fn test_parse_gecos() {
+    let gcd = "Full Name,504,11345342,ä1-2312,myemail@test.com";
+    let gcs = "A böring comment →";
+    let res_detail = parse_gecos(gcd).unwrap();
+    let res_simple = parse_gecos(gcs).unwrap();
+    match res_simple {
+        Gecos::Simple { comment } => assert_eq!(comment, "A böring comment →"),
+        _ => unreachable!(),
+    }
+    match res_detail {
+        Gecos::Detail {
+            full_name,
+            room,
+            phone_work,
+            phone_home,
+            other,
+        } => {
+            assert_eq!(full_name, "Full Name");
+            assert_eq!(room, "504");
+            assert_eq!(phone_work, "11345342");
+            assert_eq!(phone_home, "ä1-2312");
+            assert_eq!(other, "myemail@test.com");
+        }
+        _ => unreachable!(),
+    }
 }
 
 #[test]
@@ -240,5 +270,22 @@ fn test_new_from_string() {
             assert_eq!(other, "myemail@test.com");
         }
         _ => unreachable!(),
+    }
+}
+
+#[test]
+fn test_parse_passwd() {
+    /// Test wether the passwd file can be parsed and recreated without throwing an exception
+    use std::fs::File;
+    use std::io::{prelude::*, BufReader};
+    let file = File::open("/etc/passwd").unwrap();
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let lineorig: String = line.unwrap();
+        assert_eq!(
+            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()),
+            lineorig
+        );
     }
 }
