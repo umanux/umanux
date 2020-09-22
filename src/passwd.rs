@@ -1,4 +1,5 @@
 use std::cmp::Eq;
+use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -64,46 +65,20 @@ impl<'a> Passwd<'a> {
             return Err("Failed to parse: not enough elements");
         } else {
             Ok(Passwd {
-                username: Username {
-                    username: elements.get(0).unwrap(),
-                },
-                password: Password {
-                    password: elements.get(1).unwrap(),
-                },
-                uid: Uid {
-                    uid: elements.get(2).unwrap().parse::<u32>().unwrap(),
-                },
-                gid: Gid {
-                    gid: elements.get(3).unwrap().parse::<u32>().unwrap(),
-                },
-                gecos: parse_gecos(elements.get(4).unwrap()).unwrap(),
-                home_dir: HomeDir {
-                    dir: elements.get(5).unwrap(),
-                },
-                shell_dir: ShellDir {
-                    shell: elements.get(6).unwrap(),
-                },
+                username: Username::try_from(*elements.get(0).unwrap())
+                    .expect("failed to parse username."),
+                password: Password::try_from(*elements.get(1).unwrap())
+                    .expect("Failed to parse Password"),
+                uid: Uid::try_from(*elements.get(2).unwrap()).expect("Failed to parse uid"),
+                gid: Gid::try_from(*elements.get(3).unwrap()).expect("Failed to parse gid"),
+                gecos: Gecos::try_from(*elements.get(4).unwrap())
+                    .expect("Failed to parse Gecos field"),
+                home_dir: HomeDir::try_from(*elements.get(5).unwrap())
+                    .expect("Failed to parse home directory"),
+                shell_dir: ShellDir::try_from(*elements.get(6).unwrap())
+                    .expect("Failed to parse shell directory"),
             })
         }
-    }
-}
-
-fn parse_gecos(source: &str) -> Result<Gecos, &str> {
-    let vals: Vec<&str> = source.split(',').collect();
-    if vals.len() == 5 {
-        Ok(Gecos::Detail {
-            full_name: vals.get(0).unwrap(),
-            room: vals.get(1).unwrap(),
-            phone_work: vals.get(2).unwrap(),
-            phone_home: vals.get(3).unwrap(),
-            other: vals.get(4).unwrap(),
-        })
-    } else if vals.len() == 1 {
-        Ok(Gecos::Simple {
-            comment: vals.get(0).unwrap(),
-        })
-    } else {
-        panic!(format!("Could not parse this string: {}", source))
     }
 }
 
@@ -151,9 +126,23 @@ impl Display for Username<'_> {
     }
 }
 
+impl<'a> TryFrom<&'a str> for Username<'a> {
+    type Error = &'static str;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self { username: source })
+    }
+}
+
 impl Display for Password<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.password,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Password<'a> {
+    type Error = &'static str;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self { password: source })
     }
 }
 
@@ -163,9 +152,27 @@ impl Display for Uid {
     }
 }
 
+impl TryFrom<&str> for Uid {
+    type Error = &'static str;
+    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            uid: source.parse::<u32>().unwrap(),
+        })
+    }
+}
+
 impl Display for Gid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.gid,)
+    }
+}
+
+impl TryFrom<&str> for Gid {
+    type Error = &'static str;
+    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            gid: source.parse::<u32>().unwrap(),
+        })
     }
 }
 
@@ -188,15 +195,51 @@ impl Display for Gecos<'_> {
     }
 }
 
+impl<'a> TryFrom<&'a str> for Gecos<'a> {
+    type Error = &'static str;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        let vals: Vec<&str> = source.split(',').collect();
+        if vals.len() == 5 {
+            Ok(Gecos::Detail {
+                full_name: vals.get(0).unwrap(),
+                room: vals.get(1).unwrap(),
+                phone_work: vals.get(2).unwrap(),
+                phone_home: vals.get(3).unwrap(),
+                other: vals.get(4).unwrap(),
+            })
+        } else if vals.len() == 1 {
+            Ok(Gecos::Simple {
+                comment: vals.get(0).unwrap(),
+            })
+        } else {
+            panic!(format!("Could not parse this string: {}", source))
+        }
+    }
+}
+
 impl Display for HomeDir<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.dir,)
     }
 }
 
+impl<'a> TryFrom<&'a str> for HomeDir<'a> {
+    type Error = &'static str;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self { dir: source })
+    }
+}
+
 impl Display for ShellDir<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.shell,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for ShellDir<'a> {
+    type Error = &'static str;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self { shell: source })
     }
 }
 
@@ -216,8 +259,8 @@ fn test_parse_gecos() {
     // test if the Gecos field can be parsed and the resulting struct is populated correctly.
     let gcd = "Full Name,504,11345342,ä1-2312,myemail@test.com";
     let gcs = "A böring comment →";
-    let res_detail = parse_gecos(gcd).unwrap();
-    let res_simple = parse_gecos(gcs).unwrap();
+    let res_detail = Gecos::try_from(gcd).unwrap();
+    let res_simple = Gecos::try_from(gcs).unwrap();
     match res_simple {
         Gecos::Simple { comment } => assert_eq!(comment, "A böring comment →"),
         _ => unreachable!(),
