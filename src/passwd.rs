@@ -3,22 +3,22 @@ use std::fmt::{self, Display};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Username<'a> {
-    pw_name: &'a str,
+    username: &'a str,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Password<'a> {
-    pw_passwd: &'a str,
+    password: &'a str,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Uid {
-    pw_uid: u32,
+    uid: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Gid {
-    pw_gid: u32,
+    gid: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -37,24 +37,24 @@ pub enum Gecos<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct HomeDir<'a> {
-    pw_dir: &'a str,
+    dir: &'a str,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ShellDir<'a> {
-    pw_shell: &'a str,
+    shell: &'a str,
 }
 
 /// A record in the user database `/etc/passwd`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Passwd<'a> {
-    pw_name: Username<'a>,   /* Username.  */
-    pw_passwd: Password<'a>, /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
-    pw_uid: Uid,             /* User ID.  */
-    pw_gid: Gid,             /* Group ID.  */
-    pw_gecos: Gecos<'a>,     /* Real name.  */
-    pw_dir: HomeDir<'a>,     /* Home directory.  */
-    pw_shell: ShellDir<'a>,  /* Shell program.  */
+    username: Username<'a>,  /* Username.  */
+    password: Password<'a>,  /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
+    uid: Uid,                /* User ID.  */
+    gid: Gid,                /* Group ID.  */
+    gecos: Gecos<'a>,        /* Real name.  */
+    home_dir: HomeDir<'a>,   /* Home directory.  */
+    shell_dir: ShellDir<'a>, /* Shell program.  */
 }
 
 impl<'a> Passwd<'a> {
@@ -64,24 +64,24 @@ impl<'a> Passwd<'a> {
             return Err("Failed to parse: not enough elements");
         } else {
             Ok(Passwd {
-                pw_name: Username {
-                    pw_name: elements.get(0).unwrap(),
+                username: Username {
+                    username: elements.get(0).unwrap(),
                 },
-                pw_passwd: Password {
-                    pw_passwd: elements.get(1).unwrap(),
+                password: Password {
+                    password: elements.get(1).unwrap(),
                 },
-                pw_uid: Uid {
-                    pw_uid: elements.get(2).unwrap().parse::<u32>().unwrap(),
+                uid: Uid {
+                    uid: elements.get(2).unwrap().parse::<u32>().unwrap(),
                 },
-                pw_gid: Gid {
-                    pw_gid: elements.get(3).unwrap().parse::<u32>().unwrap(),
+                gid: Gid {
+                    gid: elements.get(3).unwrap().parse::<u32>().unwrap(),
                 },
-                pw_gecos: parse_gecos(elements.get(4).unwrap()).unwrap(),
-                pw_dir: HomeDir {
-                    pw_dir: elements.get(5).unwrap(),
+                gecos: parse_gecos(elements.get(4).unwrap()).unwrap(),
+                home_dir: HomeDir {
+                    dir: elements.get(5).unwrap(),
                 },
-                pw_shell: ShellDir {
-                    pw_shell: elements.get(6).unwrap(),
+                shell_dir: ShellDir {
+                    shell: elements.get(6).unwrap(),
                 },
             })
         }
@@ -110,23 +110,21 @@ fn parse_gecos(source: &str) -> Result<Gecos, &str> {
 impl Default for Passwd<'_> {
     fn default() -> Self {
         Passwd {
-            pw_name: Username {
-                pw_name: "defaultuser",
+            username: Username {
+                username: "defaultuser",
             },
-            pw_passwd: Password {
-                pw_passwd: "notencrypted",
+            password: Password {
+                password: "notencrypted",
             },
-            pw_uid: Uid { pw_uid: 1001 },
-            pw_gid: Gid { pw_gid: 1001 },
-            pw_gecos: Gecos::Simple {
+            uid: Uid { uid: 1001 },
+            gid: Gid { gid: 1001 },
+            gecos: Gecos::Simple {
                 comment: "gecos default comment",
             },
-            pw_dir: HomeDir {
-                pw_dir: "/home/default",
+            home_dir: HomeDir {
+                dir: "/home/default",
             },
-            pw_shell: ShellDir {
-                pw_shell: "/bin/bash",
-            },
+            shell_dir: ShellDir { shell: "/bin/bash" },
         }
     }
 }
@@ -136,38 +134,38 @@ impl Display for Passwd<'_> {
         write!(
             f,
             "{}:{}:{}:{}:{}:{}:{}",
-            self.pw_name,
-            self.pw_passwd,
-            self.pw_uid,
-            self.pw_gid,
-            self.pw_gecos,
-            self.pw_dir,
-            self.pw_shell
+            self.username,
+            self.password,
+            self.uid,
+            self.gid,
+            self.gecos,
+            self.home_dir,
+            self.shell_dir
         )
     }
 }
 
 impl Display for Username<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_name,)
+        write!(f, "{}", self.username,)
     }
 }
 
 impl Display for Password<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_passwd,)
+        write!(f, "{}", self.password,)
     }
 }
 
 impl Display for Uid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_uid,)
+        write!(f, "{}", self.uid,)
     }
 }
 
 impl Display for Gid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_gid,)
+        write!(f, "{}", self.gid,)
     }
 }
 
@@ -192,13 +190,13 @@ impl Display for Gecos<'_> {
 
 impl Display for HomeDir<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_dir,)
+        write!(f, "{}", self.dir,)
     }
 }
 
 impl Display for ShellDir<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.pw_shell,)
+        write!(f, "{}", self.shell,)
     }
 }
 
@@ -206,14 +204,16 @@ impl Display for ShellDir<'_> {
 
 #[test]
 fn test_default_user() {
+    // Check if a user can be created.
     let pwd = Passwd::default();
-    assert_eq!(pwd.pw_name.pw_name, "defaultuser");
-    assert_eq!(pwd.pw_dir.pw_dir, "/home/default");
-    assert_eq!(pwd.pw_uid.pw_uid, 1001);
+    assert_eq!(pwd.username.username, "defaultuser");
+    assert_eq!(pwd.home_dir.dir, "/home/default");
+    assert_eq!(pwd.uid.uid, 1001);
 }
 
 #[test]
 fn test_parse_gecos() {
+    // test if the Gecos field can be parsed and the resulting struct is populated correctly.
     let gcd = "Full Name,504,11345342,ä1-2312,myemail@test.com";
     let gcs = "A böring comment →";
     let res_detail = parse_gecos(gcd).unwrap();
@@ -242,20 +242,21 @@ fn test_parse_gecos() {
 
 #[test]
 fn test_new_from_string() {
+    // Test if a single line can be parsed and if the resulting struct is populated correctly.
     let pwd =
         Passwd::new_from_string("testuser:testpassword:1001:1001:testcomment:/home/test:/bin/test")
             .unwrap();
     let pwd2 =
         Passwd::new_from_string("testuser:testpassword:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test")
             .unwrap();
-    assert_eq!(pwd.pw_name.pw_name, "testuser");
-    assert_eq!(pwd.pw_dir.pw_dir, "/home/test");
-    assert_eq!(pwd.pw_uid.pw_uid, 1001);
-    match pwd.pw_gecos {
+    assert_eq!(pwd.username.username, "testuser");
+    assert_eq!(pwd.home_dir.dir, "/home/test");
+    assert_eq!(pwd.uid.uid, 1001);
+    match pwd.gecos {
         Gecos::Simple { comment } => assert_eq!(comment, "testcomment"),
         _ => unreachable!(),
     }
-    match pwd2.pw_gecos {
+    match pwd2.gecos {
         Gecos::Detail {
             full_name,
             room,
@@ -275,7 +276,7 @@ fn test_new_from_string() {
 
 #[test]
 fn test_parse_passwd() {
-    /// Test wether the passwd file can be parsed and recreated without throwing an exception
+    // Test wether the passwd file can be parsed and recreated without throwing an exception
     use std::fs::File;
     use std::io::{prelude::*, BufReader};
     let file = File::open("/etc/passwd").unwrap();
