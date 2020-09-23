@@ -1,9 +1,22 @@
+#![warn(
+    clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
+)]
 use std::cmp::Eq;
 use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
+/// The username of the current user
+///
+/// When done the validity will automatically be checked in the `trait TryFrom`.
+///
+/// In the future some extra fields might be added.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Username<'a> {
+    /// The username value
     username: &'a str,
 }
 
@@ -61,9 +74,7 @@ pub struct Passwd<'a> {
 impl<'a> Passwd<'a> {
     pub fn new_from_string(line: &'a str) -> Result<Self, &str> {
         let elements: Vec<&str> = line.split(":").collect();
-        if elements.len() != 7 {
-            return Err("Failed to parse: not enough elements");
-        } else {
+        if elements.len() == 7 {
             Ok(Passwd {
                 username: Username::try_from(*elements.get(0).unwrap())
                     .expect("failed to parse username."),
@@ -78,6 +89,8 @@ impl<'a> Passwd<'a> {
                 shell_dir: ShellDir::try_from(*elements.get(6).unwrap())
                     .expect("Failed to parse shell directory"),
             })
+        } else {
+            Err("Failed to parse: not enough elements")
         }
     }
 }
