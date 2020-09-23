@@ -281,9 +281,10 @@ fn test_parse_gecos() {
     // test if the Gecos field can be parsed and the resulting struct is populated correctly.
     let gcd = "Full Name,504,11345342,ä1-2312,myemail@test.com";
     let gcs = "A böring comment →";
-    let gc_failed: &str = "systemd Network Management,,,";
+    let gc_no_other: &str = "systemd Network Management,,,";
     let res_detail = Gecos::try_from(gcd).unwrap();
     let res_simple = Gecos::try_from(gcs).unwrap();
+    let res_no_other = Gecos::try_from(gc_no_other).unwrap();
     match res_simple {
         Gecos::Simple { comment } => assert_eq!(comment, "A böring comment →"),
         _ => unreachable!(),
@@ -301,6 +302,22 @@ fn test_parse_gecos() {
             assert_eq!(phone_work, "11345342");
             assert_eq!(phone_home, "ä1-2312");
             assert_eq!(other, "myemail@test.com");
+        }
+        _ => unreachable!(),
+    }
+    match res_no_other {
+        Gecos::Detail {
+            full_name,
+            room,
+            phone_work,
+            phone_home,
+            other,
+        } => {
+            assert_eq!(full_name, "systemd Network Management");
+            assert_eq!(room, "");
+            assert_eq!(phone_work, "");
+            assert_eq!(phone_home, "");
+            assert_eq!(other, "");
         }
         _ => unreachable!(),
     }
