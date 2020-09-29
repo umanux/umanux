@@ -1,10 +1,11 @@
-/*#![warn(
+#![warn(
     clippy::all,
-    clippy::restriction,
+/*    clippy::restriction,*/
     clippy::pedantic,
     clippy::nursery,
     clippy::cargo
-)]*/
+)]
+use crate::userlib_error::UserLibError;
 use std::cmp::Eq;
 use std::convert::TryFrom;
 use std::fmt::{self, Display};
@@ -72,8 +73,20 @@ pub struct Passwd<'a> {
 }
 
 impl<'a> Passwd<'a> {
-    pub fn new_from_string(line: &'a str) -> Result<Self, &str> {
-        let elements: Vec<&str> = line.split(":").collect();
+    /// Parse a line formatted like one in `/etc/passwd` and construct a matching `Passwd` instance
+    ///
+    /// # Example
+    /// ```
+    /// let pwd = adduser::passwd::Passwd::new_from_string(
+    ///     "testuser:testpassword:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test"
+    /// ).unwrap();
+    /// assert!(format!("{:?}", pwd).find("testuser") > Some(0));
+    /// ```
+    ///
+    /// # Errors
+    /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
+    pub fn new_from_string(line: &'a str) -> Result<Self, UserLibError> {
+        let elements: Vec<&str> = line.split(':').collect();
         if elements.len() == 7 {
             Ok(Passwd {
                 username: Username::try_from(*elements.get(0).unwrap())
@@ -90,7 +103,9 @@ impl<'a> Passwd<'a> {
                     .expect("Failed to parse shell directory"),
             })
         } else {
-            Err("Failed to parse: not enough elements")
+            Err(UserLibError::Message(
+                "Failed to parse: not enough elements".to_owned(),
+            ))
         }
     }
 }
@@ -228,8 +243,7 @@ impl<'a> TryFrom<&'a str> for Gecos<'a> {
                 phone_home: vals.get(3).unwrap(),
                 other: "",
             })
-        }
-        else if vals.len() == 1 {
+        } else if vals.len() == 1 {
             Ok(Gecos::Simple {
                 comment: vals.get(0).unwrap(),
             })
@@ -279,11 +293,11 @@ fn test_default_user() {
 #[test]
 fn test_parse_gecos() {
     // test if the Gecos field can be parsed and the resulting struct is populated correctly.
-    let gcd = "Full Name,504,11345342,ä1-2312,myemail@test.com";
-    let gcs = "A böring comment →";
+    let gcdetail = "Full Name,504,11345342,ä1-2312,myemail@test.com";
+    let gcsimple = "A böring comment →";
     let gc_no_other: &str = "systemd Network Management,,,";
-    let res_detail = Gecos::try_from(gcd).unwrap();
-    let res_simple = Gecos::try_from(gcs).unwrap();
+    let res_detail = Gecos::try_from(gcdetail).unwrap();
+    let res_simple = Gecos::try_from(gcsimple).unwrap();
     let res_no_other = Gecos::try_from(gc_no_other).unwrap();
     match res_simple {
         Gecos::Simple { comment } => assert_eq!(comment, "A böring comment →"),
@@ -369,8 +383,8 @@ fn test_parse_passwd() {
         let lineorig: String = line.unwrap();
         assert_eq!(
             // ignoring the numbers of `,` since the implementation does not (yet) reproduce a missing comment field.
-            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()).replace(",",""),
-            lineorig.replace(",","")
+            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()).replace(",", ""),
+            lineorig.replace(",", "")
         );
     }
 }
