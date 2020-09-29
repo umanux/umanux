@@ -43,7 +43,7 @@ pub enum Gecos<'a> {
         room: &'a str,
         phone_work: &'a str,
         phone_home: &'a str,
-        other: &'a str,
+        other: Vec<&'a str>,
     },
     Simple {
         comment: &'a str,
@@ -168,8 +168,8 @@ impl<'a> Gecos<'a> {
         }
     }
     #[must_use]
-    pub const fn get_other(&'a self) -> Option<&'a str> {
-        match *self {
+    pub const fn get_other(&'a self) -> Option<&Vec<&'a str>> {
+        match self {
             Gecos::Simple { .. } => None,
             Gecos::Detail { other, .. } => Some(other),
         }
@@ -283,7 +283,11 @@ impl Display for Gecos<'_> {
             } => write!(
                 f,
                 "{},{},{},{},{}",
-                full_name, room, phone_work, phone_home, other
+                full_name,
+                room,
+                phone_work,
+                phone_home,
+                other.join(",")
             ),
         }
     }
@@ -293,21 +297,13 @@ impl<'a> TryFrom<&'a str> for Gecos<'a> {
     type Error = UserLibError;
     fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
         let vals: Vec<&str> = source.split(',').collect();
-        if vals.len() == 5 {
+        if vals.len() > 3 {
             Ok(Gecos::Detail {
-                full_name: vals.get(0).unwrap(),
-                room: vals.get(1).unwrap(),
-                phone_work: vals.get(2).unwrap(),
-                phone_home: vals.get(3).unwrap(),
-                other: vals.get(4).unwrap(),
-            })
-        } else if vals.len() == 4 {
-            Ok(Gecos::Detail {
-                full_name: vals.get(0).unwrap(),
-                room: vals.get(1).unwrap(),
-                phone_work: vals.get(2).unwrap(),
-                phone_home: vals.get(3).unwrap(),
-                other: "",
+                full_name: vals[0],
+                room: vals[1],
+                phone_work: vals[2],
+                phone_home: vals[3],
+                other: vals[4..].to_vec(),
             })
         } else if vals.len() == 1 {
             Ok(Gecos::Simple {
@@ -381,7 +377,7 @@ fn test_parse_gecos() {
             assert_eq!(room, "504");
             assert_eq!(phone_work, "11345342");
             assert_eq!(phone_home, "ä1-2312");
-            assert_eq!(other, "myemail@test.com");
+            assert_eq!(other[0], "myemail@test.com");
         }
         _ => unreachable!(),
     }
@@ -397,7 +393,7 @@ fn test_parse_gecos() {
             assert_eq!(room, "");
             assert_eq!(phone_work, "");
             assert_eq!(phone_home, "");
-            assert_eq!(other, "");
+            assert_eq!(other.len(), 0);
         }
         _ => unreachable!(),
     }
@@ -436,7 +432,7 @@ fn test_new_from_string() {
             assert_eq!(room, "004");
             assert_eq!(phone_work, "000342");
             assert_eq!(phone_home, "001-2312");
-            assert_eq!(other, "myemail@test.com");
+            assert_eq!(other[0], "myemail@test.com");
         }
         _ => unreachable!(),
     }
@@ -454,8 +450,8 @@ fn test_parse_passwd() {
         let lineorig: String = line.unwrap();
         assert_eq!(
             // ignoring the numbers of `,` since the implementation does not (yet) reproduce a missing comment field.
-            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()).replace(",", ""),
-            lineorig.replace(",", "")
+            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()),
+            lineorig
         );
     }
 }
