@@ -45,7 +45,7 @@ pub enum Gecos<'a> {
         room: &'a str,
         phone_work: &'a str,
         phone_home: &'a str,
-        other: Vec<&'a str>,
+        other: Option<Vec<&'a str>>,
     },
     Simple {
         comment: &'a str,
@@ -145,35 +145,62 @@ impl<'a> Gecos<'a> {
     pub const fn get_full_name(&'a self) -> Option<&'a str> {
         match *self {
             Gecos::Simple { .. } => None,
-            Gecos::Detail { full_name, .. } => Some(full_name),
+            Gecos::Detail { full_name, .. } => {
+                if full_name.is_empty() {
+                    Some(full_name)
+                } else {
+                    None
+                }
+            }
         }
     }
     #[must_use]
     pub const fn get_room(&'a self) -> Option<&'a str> {
         match *self {
             Gecos::Simple { .. } => None,
-            Gecos::Detail { room, .. } => Some(room),
+            Gecos::Detail { room, .. } => {
+                if room.is_empty() {
+                    Some(room)
+                } else {
+                    None
+                }
+            }
         }
     }
     #[must_use]
     pub const fn get_phone_work(&'a self) -> Option<&'a str> {
         match *self {
             Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_work, .. } => Some(phone_work),
+            Gecos::Detail { phone_work, .. } => {
+                if phone_work.is_empty() {
+                    Some(phone_work)
+                } else {
+                    None
+                }
+            }
         }
     }
     #[must_use]
     pub const fn get_phone_home(&'a self) -> Option<&'a str> {
         match *self {
             Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_home, .. } => Some(phone_home),
+            Gecos::Detail { phone_home, .. } => {
+                if phone_home.is_empty() {
+                    Some(phone_home)
+                } else {
+                    None
+                }
+            }
         }
     }
     #[must_use]
     pub const fn get_other(&'a self) -> Option<&Vec<&'a str>> {
         match self {
             Gecos::Simple { .. } => None,
-            Gecos::Detail { other, .. } => Some(other),
+            Gecos::Detail { other, .. } => match other {
+                None => None,
+                Some(comments) => Some(comments),
+            },
         }
     }
 }
@@ -284,12 +311,15 @@ impl Display for Gecos<'_> {
                 other,
             } => write!(
                 f,
-                "{},{},{},{},{}",
+                "{},{},{},{}{}",
                 full_name,
                 room,
                 phone_work,
                 phone_home,
-                other.join(",")
+                match other {
+                    None => "".to_string(),
+                    Some(cont) => format!(",{}", cont.join(",")),
+                }
             ),
         }
     }
@@ -305,7 +335,11 @@ impl<'a> TryFrom<&'a str> for Gecos<'a> {
                 room: vals[1],
                 phone_work: vals[2],
                 phone_home: vals[3],
-                other: vals[4..].to_vec(),
+                other: if vals.len() == 4 {
+                    None
+                } else {
+                    Some(vals[4..].to_vec())
+                },
             })
         } else if vals.len() == 1 {
             Ok(Gecos::Simple {
@@ -379,7 +413,7 @@ fn test_parse_gecos() {
             assert_eq!(room, "504");
             assert_eq!(phone_work, "11345342");
             assert_eq!(phone_home, "ä1-2312");
-            assert_eq!(other[0], "myemail@test.com");
+            assert_eq!(other.unwrap()[0], "myemail@test.com");
         }
         _ => unreachable!(),
     }
@@ -395,7 +429,7 @@ fn test_parse_gecos() {
             assert_eq!(room, "");
             assert_eq!(phone_work, "");
             assert_eq!(phone_home, "");
-            assert_eq!(other.len(), 0);
+            assert_eq!(other, None);
         }
         _ => unreachable!(),
     }
@@ -434,7 +468,7 @@ fn test_new_from_string() {
             assert_eq!(room, "004");
             assert_eq!(phone_work, "000342");
             assert_eq!(phone_home, "001-2312");
-            assert_eq!(other[0], "myemail@test.com");
+            assert_eq!(other.unwrap()[0], "myemail@test.com");
         }
         _ => unreachable!(),
     }
@@ -450,10 +484,12 @@ fn test_parse_passwd() {
 
     for line in reader.lines() {
         let lineorig: String = line.unwrap();
+        let linecopy = lineorig.clone();
+        let pass_struc = Passwd::new_from_string(&linecopy).unwrap();
         assert_eq!(
             // ignoring the numbers of `,` since the implementation does not (yet) reproduce a missing comment field.
-            format!("{}", Passwd::new_from_string(&lineorig.clone()).unwrap()),
-            lineorig
+            lineorig,
+            format!("{}", pass_struc)
         );
     }
 }
