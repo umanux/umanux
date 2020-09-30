@@ -7,6 +7,8 @@
 )]
 #![allow(clippy::non_ascii_literal)]
 
+use regex::Regex;
+
 use crate::userlib_error::UserLibError;
 use std::cmp::Eq;
 use std::convert::TryFrom;
@@ -259,7 +261,15 @@ impl Display for Username<'_> {
 impl<'a> TryFrom<&'a str> for Username<'a> {
     type Error = UserLibError;
     fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self { username: source })
+        lazy_static! {
+            static ref USERVALIDATION: Regex =
+                Regex::new("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$").unwrap();
+        }
+        if USERVALIDATION.is_match(source) {
+            Ok(Self { username: source })
+        } else {
+            Err(UserLibError::Message("Invalid username".into()))
+        }
     }
 }
 
@@ -385,6 +395,37 @@ impl<'a> TryFrom<&'a str> for ShellPath<'a> {
 }
 
 // Tests ----------------------------------------------------------------------
+
+#[test]
+fn test_username_validation() {
+    // Failing tests
+    let umlauts = Username::try_from("täst"); // umlauts
+    assert_eq!(
+        Err(UserLibError::Message("Invalid username".into())),
+        umlauts
+    );
+    let number_first = Username::try_from("11elf"); // numbers first
+    assert_eq!(
+        Err(UserLibError::Message("Invalid username".into())),
+        number_first
+    );
+    let slashes = Username::try_from("test/name"); // slashes in the name
+    assert_eq!(
+        Err(UserLibError::Message("Invalid username".into())),
+        slashes
+    );
+    let long = Username::try_from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); // maximum size 32 letters
+    assert_eq!(Err(UserLibError::Message("Invalid username".into())), long);
+    // Working tests
+    let single = Username::try_from("t"); // single characters are ok
+    assert_eq!(single.unwrap().username, "t");
+    let normal = Username::try_from("superman"); // regular username
+    assert_eq!(normal.unwrap().username, "superman");
+    let normal = Username::try_from("anna3pete"); // regular username containing a number
+    assert_eq!(normal.unwrap().username, "anna3pete");
+    let normal = Username::try_from("enya$"); // regular username ending in a $
+    assert_eq!(normal.unwrap().username, "enya$");
+}
 
 #[test]
 fn test_default_user() {
