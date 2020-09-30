@@ -147,9 +147,9 @@ impl<'a> Gecos<'a> {
             Gecos::Simple { .. } => None,
             Gecos::Detail { full_name, .. } => {
                 if full_name.is_empty() {
-                    Some(full_name)
-                } else {
                     None
+                } else {
+                    Some(full_name)
                 }
             }
         }
@@ -160,9 +160,9 @@ impl<'a> Gecos<'a> {
             Gecos::Simple { .. } => None,
             Gecos::Detail { room, .. } => {
                 if room.is_empty() {
-                    Some(room)
-                } else {
                     None
+                } else {
+                    Some(room)
                 }
             }
         }
@@ -173,9 +173,9 @@ impl<'a> Gecos<'a> {
             Gecos::Simple { .. } => None,
             Gecos::Detail { phone_work, .. } => {
                 if phone_work.is_empty() {
-                    Some(phone_work)
-                } else {
                     None
+                } else {
+                    Some(phone_work)
                 }
             }
         }
@@ -186,9 +186,9 @@ impl<'a> Gecos<'a> {
             Gecos::Simple { .. } => None,
             Gecos::Detail { phone_home, .. } => {
                 if phone_home.is_empty() {
-                    Some(phone_home)
-                } else {
                     None
+                } else {
+                    Some(phone_home)
                 }
             }
         }
@@ -433,6 +433,35 @@ fn test_parse_gecos() {
         }
         _ => unreachable!(),
     }
+}
+
+#[test]
+fn test_gecos_getters() {
+    // test if the Gecos field can be parsed and the resulting struct is populated correctly.
+    let gcdetail = "Full Name,504,11345342,ä1-2312,myemail@test.com";
+    let gcsimple = "A böring comment →";
+    let gc_no_other: &str = "systemd Network Management,,,";
+    let res_detail = Gecos::try_from(gcdetail).unwrap();
+    let res_simple = Gecos::try_from(gcsimple).unwrap();
+    let res_no_other = Gecos::try_from(gc_no_other).unwrap();
+    assert_eq!(res_simple.get_comment(), Some("A böring comment →"));
+
+    assert_eq!(res_detail.get_comment(), None);
+    println!("{:?}", res_detail);
+    assert_eq!(res_detail.get_full_name(), Some("Full Name"));
+    assert_eq!(res_detail.get_room(), Some("504"));
+    assert_eq!(res_detail.get_phone_work(), Some("11345342"));
+    assert_eq!(res_detail.get_phone_home(), Some("ä1-2312"));
+    assert_eq!(res_detail.get_other(), Some(&vec!["myemail@test.com"]));
+
+    assert_eq!(
+        res_no_other.get_full_name(),
+        Some("systemd Network Management")
+    );
+    assert_eq!(res_no_other.get_room(), None);
+    assert_eq!(res_no_other.get_phone_work(), None);
+    assert_eq!(res_no_other.get_phone_home(), None);
+    assert_eq!(res_no_other.get_other(), None);
 }
 
 #[test]
