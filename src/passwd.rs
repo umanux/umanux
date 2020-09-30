@@ -52,26 +52,28 @@ pub enum Gecos<'a> {
     },
 }
 
+/// The home directory of a user
 #[derive(Debug, PartialEq, Eq)]
 pub struct HomeDir<'a> {
     dir: &'a str,
 }
 
+/// The path to the Shell binary
 #[derive(Debug, PartialEq, Eq)]
-pub struct ShellDir<'a> {
+pub struct ShellPath<'a> {
     shell: &'a str,
 }
 
-/// A record in the user database `/etc/passwd`.
+/// A record(line) in the user database `/etc/passwd` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Passwd<'a> {
-    username: Username<'a>,  /* Username.  */
-    password: Password<'a>,  /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
-    uid: Uid,                /* User ID.  */
-    gid: Gid,                /* Group ID.  */
-    gecos: Gecos<'a>,        /* Real name.  */
-    home_dir: HomeDir<'a>,   /* Home directory.  */
-    shell_dir: ShellDir<'a>, /* Shell program.  */
+    username: Username<'a>,    /* Username.  */
+    password: Password<'a>, /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
+    uid: Uid,               /* User ID.  */
+    gid: Gid,               /* Group ID.  */
+    gecos: Gecos<'a>,       /* Real name.  */
+    home_dir: HomeDir<'a>,  /* Home directory.  */
+    shell_path: ShellPath<'a>, /* Shell program.  */
 }
 
 impl<'a> Passwd<'a> {
@@ -97,7 +99,7 @@ impl<'a> Passwd<'a> {
                 gid: Gid::try_from(*elements.get(3).unwrap())?,
                 gecos: Gecos::try_from(*elements.get(4).unwrap())?,
                 home_dir: HomeDir::try_from(*elements.get(5).unwrap())?,
-                shell_dir: ShellDir::try_from(*elements.get(6).unwrap())?,
+                shell_path: ShellPath::try_from(*elements.get(6).unwrap())?,
             })
         } else {
             Err("Failed to parse: not enough elements".into())
@@ -128,8 +130,8 @@ impl<'a> Passwd<'a> {
         self.home_dir.dir
     }
     #[must_use]
-    pub const fn get_shell_dir(&self) -> &'a str {
-        self.shell_dir.shell
+    pub const fn get_shell_path(&self) -> &'a str {
+        self.shell_path.shell
     }
 }
 
@@ -222,7 +224,7 @@ impl Default for Passwd<'_> {
             home_dir: HomeDir {
                 dir: "/home/default",
             },
-            shell_dir: ShellDir { shell: "/bin/bash" },
+            shell_path: ShellPath { shell: "/bin/bash" },
         }
     }
 }
@@ -238,7 +240,7 @@ impl Display for Passwd<'_> {
             self.gid,
             self.gecos,
             self.home_dir,
-            self.shell_dir
+            self.shell_path
         )
     }
 }
@@ -364,16 +366,16 @@ impl<'a> TryFrom<&'a str> for HomeDir<'a> {
     }
 }
 
-impl Display for ShellDir<'_> {
+impl Display for ShellPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.shell,)
     }
 }
 
-impl<'a> TryFrom<&'a str> for ShellDir<'a> {
+impl<'a> TryFrom<&'a str> for ShellPath<'a> {
     type Error = UserLibError;
     fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self { shell: source })
+        Ok(ShellPath { shell: source })
     }
 }
 
