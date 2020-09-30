@@ -5,6 +5,7 @@
     clippy::nursery,
     clippy::cargo
 )]
+#![allow(clippy::non_ascii_literal)]
 
 use crate::userlib_error::UserLibError;
 use std::cmp::Eq;
@@ -354,7 +355,6 @@ fn test_default_user() {
 }
 
 #[test]
-#[allow(clippy::non_ascii_literal)]
 fn test_parse_gecos() {
     // test if the Gecos field can be parsed and the resulting struct is populated correctly.
     let gcdetail = "Full Name,504,11345342,ä1-2312,myemail@test.com";
