@@ -42,7 +42,7 @@ impl<'a> TryFrom<&'a str> for Username<'a> {
         if USERVALIDATION.is_match(source) {
             Ok(Self { username: source })
         } else if source == "Debian-exim" {
-            warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
+            //warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
             Ok(Self { username: source })
         } else {
             Err(UserLibError::Message(format!(
@@ -434,6 +434,8 @@ fn test_username_validation() {
         long
     );
     // Working tests
+    let ubuntu_exception = Username::try_from("Debian-exim"); // for some reason ubuntu and debian have a capital user.
+    assert_eq!(ubuntu_exception.unwrap().username, "Debian-exim");
     let single = Username::try_from("t"); // single characters are ok
     assert_eq!(single.unwrap().username, "t");
     let normal = Username::try_from("superman"); // regular username
