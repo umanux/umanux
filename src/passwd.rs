@@ -7,6 +7,7 @@
 )]
 #![allow(clippy::non_ascii_literal)]
 
+use log::warn;
 use regex::Regex;
 
 use crate::userlib_error::UserLibError;
@@ -25,9 +26,48 @@ pub struct Username<'a> {
     username: &'a str,
 }
 
+impl Display for Username<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.username,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Username<'a> {
+    type Error = UserLibError;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        lazy_static! {
+            static ref USERVALIDATION: Regex =
+                Regex::new("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$").unwrap();
+        }
+        if USERVALIDATION.is_match(source) {
+            Ok(Self { username: source })
+        } else {
+            Err(UserLibError::Message("Invalid username".into()))
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Password<'a> {
     password: &'a str,
+}
+
+impl Display for Password<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.password,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Password<'a> {
+    type Error = UserLibError;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        if source == "x" {
+            warn!("password from shadow not loaded!")
+        } else {
+            warn!("Password field has an unexpected value")
+        };
+        Ok(Self { password: source })
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -39,6 +79,7 @@ pub struct Uid {
 pub struct Gid {
     gid: u32,
 }
+
 /// The gecos field of a user.
 ///
 /// In the `/etc/passwd` file this field is a `,` sepparated list of items.
@@ -59,6 +100,129 @@ pub enum Gecos<'a> {
     },
 }
 
+impl<'a> Gecos<'a> {
+    #[must_use]
+    pub const fn get_comment(&'a self) -> Option<&'a str> {
+        match *self {
+            Gecos::Simple { comment, .. } => Some(comment),
+            Gecos::Detail { .. } => None,
+        }
+    }
+    #[must_use]
+    pub const fn get_full_name(&'a self) -> Option<&'a str> {
+        match *self {
+            Gecos::Simple { .. } => None,
+            Gecos::Detail { full_name, .. } => {
+                if full_name.is_empty() {
+                    None
+                } else {
+                    Some(full_name)
+                }
+            }
+        }
+    }
+    #[must_use]
+    pub const fn get_room(&'a self) -> Option<&'a str> {
+        match *self {
+            Gecos::Simple { .. } => None,
+            Gecos::Detail { room, .. } => {
+                if room.is_empty() {
+                    None
+                } else {
+                    Some(room)
+                }
+            }
+        }
+    }
+    #[must_use]
+    pub const fn get_phone_work(&'a self) -> Option<&'a str> {
+        match *self {
+            Gecos::Simple { .. } => None,
+            Gecos::Detail { phone_work, .. } => {
+                if phone_work.is_empty() {
+                    None
+                } else {
+                    Some(phone_work)
+                }
+            }
+        }
+    }
+    #[must_use]
+    pub const fn get_phone_home(&'a self) -> Option<&'a str> {
+        match *self {
+            Gecos::Simple { .. } => None,
+            Gecos::Detail { phone_home, .. } => {
+                if phone_home.is_empty() {
+                    None
+                } else {
+                    Some(phone_home)
+                }
+            }
+        }
+    }
+    #[must_use]
+    pub const fn get_other(&'a self) -> Option<&Vec<&'a str>> {
+        match self {
+            Gecos::Simple { .. } => None,
+            Gecos::Detail { other, .. } => match other {
+                None => None,
+                Some(comments) => Some(comments),
+            },
+        }
+    }
+}
+
+impl Display for Gecos<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            Gecos::Simple { comment } => write!(f, "{}", comment),
+            Gecos::Detail {
+                full_name,
+                room,
+                phone_work,
+                phone_home,
+                other,
+            } => write!(
+                f,
+                "{},{},{},{}{}",
+                full_name,
+                room,
+                phone_work,
+                phone_home,
+                match other {
+                    None => "".to_string(),
+                    Some(cont) => format!(",{}", cont.join(",")),
+                }
+            ),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Gecos<'a> {
+    type Error = UserLibError;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        let vals: Vec<&str> = source.split(',').collect();
+        if vals.len() > 3 {
+            Ok(Gecos::Detail {
+                full_name: vals[0],
+                room: vals[1],
+                phone_work: vals[2],
+                phone_home: vals[3],
+                other: if vals.len() == 4 {
+                    None
+                } else {
+                    Some(vals[4..].to_vec())
+                },
+            })
+        } else if vals.len() == 1 {
+            Ok(Gecos::Simple {
+                comment: vals.get(0).unwrap(),
+            })
+        } else {
+            panic!(format!("Could not parse this string: {}", source))
+        }
+    }
+}
 /// The home directory of a user
 #[derive(Debug, PartialEq, Eq)]
 pub struct HomeDir<'a> {
@@ -142,78 +306,6 @@ impl<'a> Passwd<'a> {
     }
 }
 
-impl<'a> Gecos<'a> {
-    #[must_use]
-    pub const fn get_comment(&'a self) -> Option<&'a str> {
-        match *self {
-            Gecos::Simple { comment, .. } => Some(comment),
-            Gecos::Detail { .. } => None,
-        }
-    }
-    #[must_use]
-    pub const fn get_full_name(&'a self) -> Option<&'a str> {
-        match *self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { full_name, .. } => {
-                if full_name.is_empty() {
-                    None
-                } else {
-                    Some(full_name)
-                }
-            }
-        }
-    }
-    #[must_use]
-    pub const fn get_room(&'a self) -> Option<&'a str> {
-        match *self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { room, .. } => {
-                if room.is_empty() {
-                    None
-                } else {
-                    Some(room)
-                }
-            }
-        }
-    }
-    #[must_use]
-    pub const fn get_phone_work(&'a self) -> Option<&'a str> {
-        match *self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_work, .. } => {
-                if phone_work.is_empty() {
-                    None
-                } else {
-                    Some(phone_work)
-                }
-            }
-        }
-    }
-    #[must_use]
-    pub const fn get_phone_home(&'a self) -> Option<&'a str> {
-        match *self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_home, .. } => {
-                if phone_home.is_empty() {
-                    None
-                } else {
-                    Some(phone_home)
-                }
-            }
-        }
-    }
-    #[must_use]
-    pub const fn get_other(&'a self) -> Option<&Vec<&'a str>> {
-        match self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { other, .. } => match other {
-                None => None,
-                Some(comments) => Some(comments),
-            },
-        }
-    }
-}
-
 impl Default for Passwd<'_> {
     fn default() -> Self {
         Passwd {
@@ -252,40 +344,6 @@ impl Display for Passwd<'_> {
     }
 }
 
-impl Display for Username<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.username,)
-    }
-}
-
-impl<'a> TryFrom<&'a str> for Username<'a> {
-    type Error = UserLibError;
-    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        lazy_static! {
-            static ref USERVALIDATION: Regex =
-                Regex::new("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$").unwrap();
-        }
-        if USERVALIDATION.is_match(source) {
-            Ok(Self { username: source })
-        } else {
-            Err(UserLibError::Message("Invalid username".into()))
-        }
-    }
-}
-
-impl Display for Password<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.password,)
-    }
-}
-
-impl<'a> TryFrom<&'a str> for Password<'a> {
-    type Error = UserLibError;
-    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self { password: source })
-    }
-}
-
 impl Display for Uid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.uid,)
@@ -313,58 +371,6 @@ impl TryFrom<&str> for Gid {
         Ok(Self {
             gid: source.parse::<u32>().unwrap(),
         })
-    }
-}
-
-impl Display for Gecos<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self {
-            Gecos::Simple { comment } => write!(f, "{}", comment),
-            Gecos::Detail {
-                full_name,
-                room,
-                phone_work,
-                phone_home,
-                other,
-            } => write!(
-                f,
-                "{},{},{},{}{}",
-                full_name,
-                room,
-                phone_work,
-                phone_home,
-                match other {
-                    None => "".to_string(),
-                    Some(cont) => format!(",{}", cont.join(",")),
-                }
-            ),
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a str> for Gecos<'a> {
-    type Error = UserLibError;
-    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        let vals: Vec<&str> = source.split(',').collect();
-        if vals.len() > 3 {
-            Ok(Gecos::Detail {
-                full_name: vals[0],
-                room: vals[1],
-                phone_work: vals[2],
-                phone_home: vals[3],
-                other: if vals.len() == 4 {
-                    None
-                } else {
-                    Some(vals[4..].to_vec())
-                },
-            })
-        } else if vals.len() == 1 {
-            Ok(Gecos::Simple {
-                comment: vals.get(0).unwrap(),
-            })
-        } else {
-            panic!(format!("Could not parse this string: {}", source))
-        }
     }
 }
 

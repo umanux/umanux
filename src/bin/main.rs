@@ -5,11 +5,19 @@ use std::fs::File;
 use std::io::{prelude::*, BufReader};
 
 fn main() {
+    simplelog::CombinedLogger::init(vec![simplelog::TermLogger::new(
+        simplelog::LevelFilter::Warn,
+        simplelog::Config::default(),
+        simplelog::TerminalMode::Mixed,
+    )])
+    .unwrap();
     let file = File::open("/etc/passwd").unwrap();
     let reader = BufReader::new(file);
 
     for line in reader.lines() {
-        println!("{}", Passwd::new_from_string(&line.unwrap()).unwrap());
+        let line = line.unwrap();
+        println!("{}", line);
+        println!("{}", Passwd::new_from_string(&line).unwrap());
     }
 
     // let pwd = Passwd::default();
