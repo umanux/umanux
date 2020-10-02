@@ -37,12 +37,18 @@ impl<'a> TryFrom<&'a str> for Username<'a> {
     fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
         lazy_static! {
             static ref USERVALIDATION: Regex =
-                Regex::new("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$").unwrap();
+                Regex::new("^[a-z_]([a-z0-9_\\-]{0,31}|[a-z0-9_\\-]{0,30}\\$)$").unwrap();
         }
         if USERVALIDATION.is_match(source) {
             Ok(Self { username: source })
+        } else if source == "Debian-exim" {
+            //warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
+            Ok(Self { username: source })
         } else {
-            Err(UserLibError::Message("Invalid username".into()))
+            Err(UserLibError::Message(format!(
+                "Invalid username {}",
+                source
+            )))
         }
     }
 }
@@ -407,22 +413,29 @@ fn test_username_validation() {
     // Failing tests
     let umlauts = Username::try_from("täst"); // umlauts
     assert_eq!(
-        Err(UserLibError::Message("Invalid username".into())),
+        Err(UserLibError::Message("Invalid username täst".into())),
         umlauts
     );
     let number_first = Username::try_from("11elf"); // numbers first
     assert_eq!(
-        Err(UserLibError::Message("Invalid username".into())),
+        Err(UserLibError::Message("Invalid username 11elf".into())),
         number_first
     );
     let slashes = Username::try_from("test/name"); // slashes in the name
     assert_eq!(
-        Err(UserLibError::Message("Invalid username".into())),
+        Err(UserLibError::Message("Invalid username test/name".into())),
         slashes
     );
     let long = Username::try_from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); // maximum size 32 letters
-    assert_eq!(Err(UserLibError::Message("Invalid username".into())), long);
+    assert_eq!(
+        Err(UserLibError::Message(
+            "Invalid username aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into()
+        )),
+        long
+    );
     // Working tests
+    let ubuntu_exception = Username::try_from("Debian-exim"); // for some reason ubuntu and debian have a capital user.
+    assert_eq!(ubuntu_exception.unwrap().username, "Debian-exim");
     let single = Username::try_from("t"); // single characters are ok
     assert_eq!(single.unwrap().username, "t");
     let normal = Username::try_from("superman"); // regular username
