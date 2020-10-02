@@ -42,7 +42,7 @@ impl<'a> TryFrom<&'a str> for Username<'a> {
         if USERVALIDATION.is_match(source) {
             Ok(Self { username: source })
         } else if source == "Debian-exim" {
-            //warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
+            warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
             Ok(Self { username: source })
         } else {
             Err(UserLibError::Message(format!(
