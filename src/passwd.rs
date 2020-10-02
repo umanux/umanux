@@ -96,6 +96,14 @@ impl TryFrom<&str> for Uid {
     }
 }
 
+impl Uid {
+    #[must_use]
+    pub const fn is_system_uid(&self) -> bool {
+        // since it is a u32  it cannot be smaller than 0
+        self.uid < 1000
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Gid {
     gid: u32,
@@ -113,6 +121,14 @@ impl TryFrom<&str> for Gid {
         Ok(Self {
             gid: source.parse::<u32>().unwrap(),
         })
+    }
+}
+
+impl Gid {
+    #[must_use]
+    pub const fn is_system_gid(&self) -> bool {
+        // since it is a u32  it cannot be smaller than 0
+        self.gid < 1000
     }
 }
 
@@ -453,6 +469,16 @@ fn test_default_user() {
     assert_eq!(pwd.username.username, "defaultuser");
     assert_eq!(pwd.home_dir.dir, "/home/default");
     assert_eq!(pwd.uid.uid, 1001);
+}
+
+#[test]
+fn test_guid_system_user() {
+    // Check uids of system users.
+    let values = vec![("999", true), ("0", true), ("1000", false)];
+    for val in values {
+        assert_eq!(Uid::try_from(val.0).unwrap().is_system_uid(), val.1);
+        assert_eq!(Gid::try_from(val.0).unwrap().is_system_gid(), val.1);
+    }
 }
 
 #[test]
