@@ -81,9 +81,39 @@ pub struct Uid {
     uid: u32,
 }
 
+impl Display for Uid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.uid,)
+    }
+}
+
+impl TryFrom<&str> for Uid {
+    type Error = UserLibError;
+    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            uid: source.parse::<u32>().unwrap(),
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Gid {
     gid: u32,
+}
+
+impl Display for Gid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.gid,)
+    }
+}
+
+impl TryFrom<&str> for Gid {
+    type Error = UserLibError;
+    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            gid: source.parse::<u32>().unwrap(),
+        })
+    }
 }
 
 /// The gecos field of a user.
@@ -235,10 +265,36 @@ pub struct HomeDir<'a> {
     dir: &'a str,
 }
 
+impl Display for HomeDir<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.dir,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for HomeDir<'a> {
+    type Error = UserLibError;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(Self { dir: source })
+    }
+}
+
 /// The path to the Shell binary
 #[derive(Debug, PartialEq, Eq)]
 pub struct ShellPath<'a> {
     shell: &'a str,
+}
+
+impl Display for ShellPath<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.shell,)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for ShellPath<'a> {
+    type Error = UserLibError;
+    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
+        Ok(ShellPath { shell: source })
+    }
 }
 
 /// A record(line) in the user database `/etc/passwd` found in most linux systems.
@@ -347,62 +403,6 @@ impl Display for Passwd<'_> {
             self.home_dir,
             self.shell_path
         )
-    }
-}
-
-impl Display for Uid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.uid,)
-    }
-}
-
-impl TryFrom<&str> for Uid {
-    type Error = UserLibError;
-    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self {
-            uid: source.parse::<u32>().unwrap(),
-        })
-    }
-}
-
-impl Display for Gid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.gid,)
-    }
-}
-
-impl TryFrom<&str> for Gid {
-    type Error = UserLibError;
-    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self {
-            gid: source.parse::<u32>().unwrap(),
-        })
-    }
-}
-
-impl Display for HomeDir<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.dir,)
-    }
-}
-
-impl<'a> TryFrom<&'a str> for HomeDir<'a> {
-    type Error = UserLibError;
-    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        Ok(Self { dir: source })
-    }
-}
-
-impl Display for ShellPath<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.shell,)
-    }
-}
-
-impl<'a> TryFrom<&'a str> for ShellPath<'a> {
-    type Error = UserLibError;
-    fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
-        Ok(ShellPath { shell: source })
     }
 }
 
