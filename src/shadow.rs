@@ -8,14 +8,12 @@
 #![allow(clippy::non_ascii_literal)]
 
 use log::warn;
-use regex::Regex;
 
 use crate::passwd;
 use crate::userlib_error::UserLibError;
-use chrono;
 use std::cmp::Eq;
 use std::convert::TryFrom;
-use std::fmt::{self, Display};
+use std::fmt::{self, Debug, Display};
 
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
@@ -24,11 +22,49 @@ pub struct Shadow<'a> {
     password: passwd::Password<'a>,                 /* Hashed passphrase */
     last_change: Option<chrono::NaiveDateTime>,     /* User ID.  */
     earliest_change: Option<chrono::NaiveDateTime>, /* Group ID.  */
-    lateste_change: Option<chrono::NaiveDateTime>,  /* Real name.  */
+    latest_change: Option<chrono::NaiveDateTime>,   /* Real name.  */
     warn_period: Option<chrono::Duration>,          /* Home directory.  */
     deactivated: Option<chrono::Duration>,          /* Shell program.  */
     deactivated_since: Option<chrono::Duration>,    /* Shell program.  */
     extensions: Option<u64>,                        /* Shell program.  */
+}
+
+impl<'a> Display for Shadow<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}:{}:{}:{}:{}:{}:{}:{}:{}",
+            self.username,
+            self.password,
+            show_option_date(self.last_change),
+            show_option_date(self.earliest_change),
+            show_option_date(self.latest_change),
+            show_option_duration(self.warn_period),
+            show_option_duration(self.deactivated),
+            show_option_duration(self.deactivated_since),
+            if self.extensions.is_none() {
+                "".to_string()
+            } else {
+                self.extensions.unwrap().to_string()
+            }
+        )
+    }
+}
+
+fn show_option_date(input: Option<chrono::NaiveDateTime>) -> String {
+    if input.is_none() {
+        "".into()
+    } else {
+        format!("{}", input.unwrap().timestamp() / SECONDS_PER_DAY)
+    }
+}
+
+fn show_option_duration(input: Option<chrono::Duration>) -> String {
+    if input.is_none() {
+        "".into()
+    } else {
+        format!("{}", input.unwrap().num_days())
+    }
 }
 
 impl<'a> Shadow<'a> {
@@ -37,29 +73,39 @@ impl<'a> Shadow<'a> {
     /// # Example
     /// ```
     /// let pwd = adduser::shadow::Shadow::new_from_string(
-    ///     ""
+    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::"
     /// ).unwrap();
-    /// //assert_eq!(pwd.get_username(), "testuser");
+    ///
     /// ```
     ///
     /// # Errors
     /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
     pub fn new_from_string(line: &'a str) -> Result<Self, UserLibError> {
+        println!("{}", &line);
         let elements: Vec<&str> = line.split(':').collect();
         if elements.len() == 9 {
+            let extra = elements.get(8).unwrap();
             Ok(Shadow {
                 username: passwd::Username::try_from(*elements.get(0).unwrap())?,
                 password: passwd::Password::try_from(*elements.get(1).unwrap())?,
                 last_change: date_since_epoch(elements.get(2).unwrap()),
                 earliest_change: date_since_epoch(elements.get(3).unwrap()),
-                lateste_change: date_since_epoch(elements.get(4).unwrap()),
+                latest_change: date_since_epoch(elements.get(4).unwrap()),
                 warn_period: duration_for_days(elements.get(5).unwrap()),
                 deactivated: duration_for_days(elements.get(6).unwrap()),
                 deactivated_since: duration_for_days(elements.get(7).unwrap()),
-                extensions: Some(0),
+                extensions: if extra.is_empty() {
+                    None
+                } else {
+                    Some(extra.parse::<u64>().unwrap())
+                },
             })
         } else {
-            Err("Failed to parse: not enough elements".into())
+            Err(UserLibError::Message(format!(
+                "Failed to parse: not enough elements ({}): {:?}",
+                elements.len(),
+                elements
+            )))
         }
     }
 }
@@ -85,8 +131,9 @@ fn duration_for_days(days_source: &str) -> Option<chrono::Duration> {
 
 #[test]
 fn test_since_epoch() {
-    panic!(format!(
-        "{:?}",
-        Shadow::new_from_string("dietrich:$6$SCJjPV7$SZ7XgOdEMiqZ3v5n9Q2AR2yJKN0PLbSHlrdiZcp/NcB41JEtT12Ke3Zy6XThfiFemJheC0IrM3..JVCAagqxg.:18110:0:99999:7:::")
-    ));
+    println!("Test");
+    let line = "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::";
+    let line2 = Shadow::new_from_string(line).unwrap();
+    println!("{:#?}", line2);
+    assert_eq!(format!("{}", line2), line);
 }

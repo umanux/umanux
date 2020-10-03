@@ -1,6 +1,7 @@
 extern crate adduser;
 
 use adduser::passwd::Passwd;
+use adduser::shadow::Shadow;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 
@@ -19,6 +20,9 @@ fn main() {
         println!("{}", line);
         println!("{}", Passwd::new_from_string(&line).unwrap());
     }
+
+    let line = "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::";
+    assert_eq!(format!("{}", Shadow::new_from_string(line).unwrap()), line);
 
     // let pwd = Passwd::default();
     // let pwd2 =
