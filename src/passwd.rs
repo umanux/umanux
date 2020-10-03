@@ -23,7 +23,7 @@ use std::fmt::{self, Display};
 #[derive(Debug, PartialEq, Eq)]
 pub struct Username<'a> {
     /// The username value
-    username: &'a str,
+    pub(crate) username: &'a str,
 }
 
 impl Display for Username<'_> {
@@ -54,17 +54,32 @@ impl<'a> TryFrom<&'a str> for Username<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Password<'a> {
-    password: &'a str,
+pub enum Password<'a> {
+    Encrypted(EncryptedPassword<'a>),
+    Shadow(crate::shadow::Shadow<'a>),
 }
 
 impl Display for Password<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Password::Encrypted(EncryptedPassword { password }) => write!(f, "{}", password,),
+            Password::Shadow(_) => write!(f, "x"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct EncryptedPassword<'a> {
+    pub(crate) password: &'a str,
+}
+
+impl Display for EncryptedPassword<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.password,)
     }
 }
 
-impl<'a> TryFrom<&'a str> for Password<'a> {
+impl<'a> TryFrom<&'a str> for EncryptedPassword<'a> {
     type Error = UserLibError;
     fn try_from(source: &'a str) -> std::result::Result<Self, Self::Error> {
         if source == "x" {
@@ -343,7 +358,9 @@ impl<'a> Passwd<'a> {
         if elements.len() == 7 {
             Ok(Passwd {
                 username: Username::try_from(*elements.get(0).unwrap())?,
-                password: Password::try_from(*elements.get(1).unwrap())?,
+                password: Password::Encrypted(EncryptedPassword::try_from(
+                    *elements.get(1).unwrap(),
+                )?),
                 uid: Uid::try_from(*elements.get(2).unwrap())?,
                 gid: Gid::try_from(*elements.get(3).unwrap())?,
                 gecos: Gecos::try_from(*elements.get(4).unwrap())?,
@@ -360,7 +377,10 @@ impl<'a> Passwd<'a> {
     }
     #[must_use]
     pub const fn get_password(&self) -> &'a str {
-        self.password.password
+        match self.password {
+            Password::Encrypted(EncryptedPassword { password }) => password,
+            Password::Shadow(crate::shadow::Shadow { ref password, .. }) => password.password,
+        }
     }
     #[must_use]
     pub const fn get_uid(&self) -> u32 {
@@ -390,9 +410,9 @@ impl Default for Passwd<'_> {
             username: Username {
                 username: "defaultuser",
             },
-            password: Password {
+            password: Password::Encrypted(EncryptedPassword {
                 password: "notencrypted",
-            },
+            }),
             uid: Uid { uid: 1001 },
             gid: Gid { gid: 1001 },
             gecos: Gecos::Simple {
