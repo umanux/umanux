@@ -7,9 +7,9 @@
 )]
 #![allow(clippy::non_ascii_literal)]
 
+use crate::userlib::NewFromString;
 use log::warn;
 
-use crate::passwd;
 use crate::userlib_error::UserLibError;
 use std::cmp::Eq;
 use std::convert::TryFrom;
@@ -17,30 +17,30 @@ use std::fmt::{self, Debug, Display};
 
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Shadow<'a> {
-    username: passwd::Username<'a>,                     /* Username.  */
-    pub(crate) password: passwd::EncryptedPassword<'a>, /* Hashed passphrase */
-    last_change: Option<chrono::NaiveDateTime>,         /* User ID.  */
-    earliest_change: Option<chrono::NaiveDateTime>,     /* Group ID.  */
-    latest_change: Option<chrono::NaiveDateTime>,       /* Real name.  */
-    warn_period: Option<chrono::Duration>,              /* Home directory.  */
-    deactivated: Option<chrono::Duration>,              /* Shell program.  */
-    deactivated_since: Option<chrono::Duration>,        /* Shell program.  */
-    extensions: Option<u64>,                            /* Shell program.  */
+pub struct Shadow {
+    username: crate::Username,                      /* Username.  */
+    pub(crate) password: crate::EncryptedPassword,  /* Hashed passphrase */
+    last_change: Option<chrono::NaiveDateTime>,     /* User ID.  */
+    earliest_change: Option<chrono::NaiveDateTime>, /* Group ID.  */
+    latest_change: Option<chrono::NaiveDateTime>,   /* Real name.  */
+    warn_period: Option<chrono::Duration>,          /* Home directory.  */
+    deactivated: Option<chrono::Duration>,          /* Shell program.  */
+    deactivated_since: Option<chrono::Duration>,    /* Shell program.  */
+    extensions: Option<u64>,                        /* Shell program.  */
 }
 
-impl<'a> Shadow<'a> {
+impl Shadow {
     #[must_use]
-    pub const fn get_username(&self) -> &'a str {
-        self.username.username
+    pub fn get_username(&self) -> &str {
+        &self.username.username
     }
     #[must_use]
-    pub const fn get_password(&self) -> &'a str {
-        self.password.password
+    pub fn get_password(&self) -> &str {
+        &self.password.password
     }
 }
 
-impl<'a> Display for Shadow<'a> {
+impl Display for Shadow {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -78,27 +78,28 @@ fn show_option_duration(input: Option<chrono::Duration>) -> String {
     }
 }
 
-impl<'a> Shadow<'a> {
+impl NewFromString for Shadow {
     /// Parse a line formatted like one in `/etc/shadow` and construct a matching `Shadow` instance
     ///
     /// # Example
     /// ```
-    /// let shad = adduser::shadow::Shadow::new_from_string(
-    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::"
+    /// use adduser::NewFromString;
+    /// let shad = adduser::Shadow::new_from_string(
+    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string()
     /// ).unwrap();
     /// assert_eq!(shad.get_username(), "test");
     /// ```
     ///
     /// # Errors
     /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
-    pub fn new_from_string(line: &'a str) -> Result<Self, UserLibError> {
+    fn new_from_string(line: String) -> Result<Self, UserLibError> {
         println!("{}", &line);
-        let elements: Vec<&str> = line.split(':').collect();
+        let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 9 {
             let extra = elements.get(8).unwrap();
             Ok(Shadow {
-                username: passwd::Username::try_from(*elements.get(0).unwrap())?,
-                password: passwd::EncryptedPassword::try_from(*elements.get(1).unwrap())?,
+                username: crate::Username::try_from(elements.get(0).unwrap().to_string())?,
+                password: crate::EncryptedPassword::try_from(elements.get(1).unwrap().to_string())?,
                 last_change: date_since_epoch(elements.get(2).unwrap()),
                 earliest_change: date_since_epoch(elements.get(3).unwrap()),
                 latest_change: date_since_epoch(elements.get(4).unwrap()),
@@ -122,6 +123,7 @@ impl<'a> Shadow<'a> {
 }
 
 const SECONDS_PER_DAY: i64 = 86400;
+
 fn date_since_epoch(days_since_epoch: &str) -> Option<chrono::NaiveDateTime> {
     if days_since_epoch.is_empty() {
         None
@@ -141,10 +143,10 @@ fn duration_for_days(days_source: &str) -> Option<chrono::Duration> {
 }
 
 #[test]
-fn test_since_epoch() {
+fn test_parse_and_back_identity() {
     println!("Test");
     let line = "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::";
-    let line2 = Shadow::new_from_string(line).unwrap();
+    let line2 = Shadow::new_from_string(line.to_owned()).unwrap();
     println!("{:#?}", line2);
     assert_eq!(format!("{}", line2), line);
 }
