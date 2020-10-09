@@ -38,11 +38,11 @@ impl Default for Files {
 impl UserDBLocal {
     #[must_use]
     pub fn import_from_strings(
-        passwd_content: String,
-        shadow_content: String,
-        group_content: String,
+        passwd_content: &str,
+        shadow_content: &str,
+        group_content: &str,
     ) -> Self {
-        let res = UserDBLocal {
+        let res = Self {
             source_files: Files {
                 passwd: None,
                 group: None,
@@ -128,6 +128,10 @@ impl UserDBLocal {
     }
 }
 
+/// Try to parse a String into some Object
+///
+/// # Errors
+/// if the parsing failed a [`UserLibError::Message`] is returned containing a more detailed error message.
 pub trait NewFromString {
     fn new_from_string(line: String) -> Result<Self, crate::UserLibError>
     where
@@ -153,7 +157,7 @@ where
 
 #[test]
 fn test_creator_user_db_local() {
-    let data = UserDBLocal::import_from_strings("testuser:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test".to_string(), "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string(), "teste:x:1002:test,teste".to_string());
+    let data = UserDBLocal::import_from_strings("testuser:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,teste");
     assert_eq!(
         data.passwd_entries.get(0).unwrap().get_username(),
         "testuser"
@@ -172,6 +176,6 @@ fn test_parsing_local_database() {
     let mut group_reader = BufReader::new(group_file);
     let mut my_group_lines = "".to_string();
     group_reader.read_to_string(&mut my_group_lines).unwrap();
-    let data = UserDBLocal::import_from_strings(my_passwd_lines, "".to_string(), my_group_lines);
+    let data = UserDBLocal::import_from_strings(&my_passwd_lines, "", &my_group_lines);
     assert_eq!(data.group_entries.get(0).unwrap().get_groupname(), "root");
 }

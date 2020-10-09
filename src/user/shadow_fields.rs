@@ -97,7 +97,7 @@ impl NewFromString for Shadow {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 9 {
             let extra = elements.get(8).unwrap();
-            Ok(Shadow {
+            Ok(Self {
                 username: crate::Username::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::EncryptedPassword::try_from(elements.get(1).unwrap().to_string())?,
                 last_change: date_since_epoch(elements.get(2).unwrap()),

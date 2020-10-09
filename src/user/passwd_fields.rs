@@ -63,9 +63,9 @@ pub enum Password {
 impl Display for Password {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Password::Encrypted(EncryptedPassword { password }) => write!(f, "{}", password,),
-            Password::Shadow(_) => write!(f, "x"),
-            Password::Disabled => write!(f, "x"),
+            Self::Encrypted(EncryptedPassword { password }) => write!(f, "{}", password,),
+            Self::Shadow(_) => write!(f, "x"),
+            Self::Disabled => write!(f, "x"),
         }
     }
 }
@@ -183,7 +183,7 @@ impl Display for ShellPath {
 impl TryFrom<String> for ShellPath {
     type Error = UserLibError;
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
-        Ok(ShellPath { shell: source })
+        Ok(Self { shell: source })
     }
 }
 

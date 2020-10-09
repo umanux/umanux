@@ -102,11 +102,11 @@ impl NewFromString for Group {
         println!("{}", &line);
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 4 {
-            Ok(Group {
+            Ok(Self {
                 groupname: Groupname::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Disabled,
                 gid: crate::Gid::try_from(elements.get(2).unwrap().to_string())?,
-                members: parse_members_list(elements.get(3).unwrap().to_string()),
+                members: parse_members_list(elements.get(3).unwrap()),
             })
         } else {
             Err(UserLibError::Message(format!(
@@ -118,13 +118,15 @@ impl NewFromString for Group {
     }
 }
 
-fn parse_members_list(source: String) -> Vec<crate::Username> {
+fn parse_members_list(source: &str) -> Vec<crate::Username> {
     let mut res = vec![];
-    for mem in source
-        .split(',')
-        .filter(|x| !x.is_empty())
-        .map(ToString::to_string)
-    {
+    for mem in source.split(',').filter_map(|x| {
+        if x.is_empty() {
+            None
+        } else {
+            Some(x.to_string())
+        }
+    }) {
         res.push(crate::Username::try_from(mem).expect("failed to parse username"));
     }
     res
