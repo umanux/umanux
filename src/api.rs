@@ -15,9 +15,9 @@ trait UserDBValidation {
 }
 
 trait UserDBWrite {
-    fn set_user(&self) -> Option<crate::User>;
+    fn delete_user(&self) -> Option<crate::User>;
     fn new_user(&self) -> Option<crate::User>;
-    fn set_group(&self) -> Option<crate::Group>;
+    fn delete_group(&self) -> Option<crate::Group>;
     fn new_group(&self) -> Option<crate::Group>;
 }
 
@@ -25,11 +25,43 @@ trait UserRead {
     fn get_username(&self) -> Option<crate::User>;
     fn get_uid(&self) -> Option<crate::User>;
     fn get_gid(&self) -> Option<crate::User>;
-    // …
+    fn get_password(&self) -> Option<crate::User>;
+    fn get_gecos(&self) -> Option<crate::User>;
+    fn get_home_dir(&self) -> Option<crate::User>;
+    fn get_shell_path(&self) -> Option<crate::User>;
+    fn get_full_name(&self) -> Option<String>;
+    fn get_room(&self) -> Option<String>;
+    fn get_phone_work(&self) -> Option<String>;
+    fn get_phone_home(&self) -> Option<String>;
+    fn get_other(&self) -> Option<Vec<String>>;
 }
 
-trait UserWrite {}
+trait UserWrite {
+    fn set_username(&self) -> Option<crate::User>;
+    fn set_uid(&self) -> Option<crate::User>;
+    fn set_gid(&self) -> Option<crate::User>;
+    fn set_password(&self) -> Option<crate::User>;
+    fn set_gecos(&self) -> Option<crate::User>;
+    fn set_home_dir(&self) -> Option<crate::User>;
+    fn set_shell_path(&self) -> Option<crate::User>;
+    fn set_full_name(&self) -> Option<String>;
+    fn set_room(&self) -> Option<String>;
+    fn set_phone_work(&self) -> Option<String>;
+    fn set_phone_home(&self) -> Option<String>;
+    fn set_other(&self) -> Option<Vec<String>>;
+}
 
-trait GroupRead {}
+trait GroupRead {
+    fn get_groupname(&self) -> Option<crate::Group>;
+    fn get_encrypted_password(&self) -> Option<crate::Group>;
+    fn get_gid(&self) -> Option<crate::Group>;
+    fn get_members(&self) -> Option<crate::Group>;
+}
 
-trait GroupWrite {}
+trait GroupWrite<T> {
+    fn set_groupname(&self) -> Option<crate::Group>;
+    fn set_password(&self) -> Option<crate::Group>;
+    fn set_gid(&self) -> Option<crate::Group>;
+    fn add_member(user: T) -> Option<crate::Group>;
+    fn remove_member(user: T) -> Option<crate::Group>;
+}
