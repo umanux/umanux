@@ -13,11 +13,11 @@ fn main() {
         simplelog::TerminalMode::Mixed,
     )])
     .unwrap();
-    let file = File::open("/etc/passwd").unwrap();
-    let reader = BufReader::new(file);
+    let file: File = File::open("/etc/passwd").unwrap();
+    let reader: BufReader<File> = BufReader::new(file);
 
     for line in reader.lines() {
-        let line = line.unwrap();
+        let line: String = line.unwrap();
         println!("{}", User::new_from_string(line).unwrap());
     }
 
