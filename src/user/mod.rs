@@ -10,13 +10,13 @@ use std::fmt::{self, Display};
 #[derive(Debug, PartialEq, Eq)]
 pub struct User {
     source: String,
-    username: crate::Username,    /* Username.  */
-    password: crate::Password, /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
-    uid: crate::Uid,           /* User ID.  */
-    gid: crate::Gid,           /* Group ID.  */
-    gecos: crate::Gecos,       /* Real name.  */
-    home_dir: crate::HomeDir,  /* Home directory.  */
-    shell_path: crate::ShellPath, /* Shell program.  */
+    username: crate::Username,            /* Username.  */
+    pub(crate) password: crate::Password, /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
+    uid: crate::Uid,                      /* User ID.  */
+    gid: crate::Gid,                      /* Group ID.  */
+    gecos: crate::Gecos,                  /* Real name.  */
+    home_dir: crate::HomeDir,             /* Home directory.  */
+    shell_path: crate::ShellPath,         /* Shell program.  */
 }
 
 impl NewFromString for User {
