@@ -1,6 +1,6 @@
 #![warn(
     clippy::all,
-/*    clippy::restriction,*/
+    clippy::restriction,
     clippy::pedantic,
     clippy::nursery,
     clippy::cargo
@@ -26,6 +26,7 @@ pub struct Files {
 }
 
 impl Default for Files {
+    /// use the default Linux `/etc/` paths
     fn default() -> Self {
         Self {
             passwd: Some(PathBuf::from("/etc/passwd")),
@@ -36,6 +37,7 @@ impl Default for Files {
 }
 
 impl UserDBLocal {
+    /// Import the database from strings
     #[must_use]
     pub fn import_from_strings(
         passwd_content: &str,
@@ -58,6 +60,7 @@ impl UserDBLocal {
         res
     }
 
+    /// Import the database from a [`Files`] struct
     #[must_use]
     pub fn load_files(files: Files) -> Self {
         let my_passwd_lines = file_to_string(files.passwd.as_ref());
@@ -75,6 +78,7 @@ impl UserDBLocal {
     }
 }
 
+/// Parse a file to a string
 fn file_to_string(path: Option<&PathBuf>) -> String {
     let file = File::open(path.expect("Path cannot be None".into()))
         .expect("Failed to read the file. Most of the time root permissions are needed".into());
@@ -84,7 +88,7 @@ fn file_to_string(path: Option<&PathBuf>) -> String {
     lines
 }
 
-/// Merge the Shadow passwords into the users.
+/// Merge the Shadow passwords into the users
 fn shadow_to_users(
     users: &mut HashMap<String, crate::User>,
     shadow: Vec<crate::Shadow>,
@@ -98,7 +102,7 @@ fn shadow_to_users(
     users
 }
 
-/// Convert a `Vec<crate::User>` to a `HashMap<String, crate::User>` where the username is used as key.
+/// Convert a `Vec<crate::User>` to a `HashMap<String, crate::User>` where the username is used as key
 fn user_vec_to_hashmap(users: Vec<crate::User>) -> HashMap<String, crate::User> {
     users
         .into_iter()
@@ -116,6 +120,7 @@ pub trait NewFromString {
         Self: Sized;
 }
 
+/// A generic function that parses a string line by line and creates the appropriate `Vec<T>` requested by the type system.
 fn string_to<T>(source: &str) -> Vec<T>
 where
     T: NewFromString,
