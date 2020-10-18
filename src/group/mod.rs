@@ -66,6 +66,10 @@ impl Group {
     pub const fn get_members(&self) -> &Vec<crate::Username> {
         &self.members
     }
+
+    pub fn get_gid(&self) -> u32 {
+        self.gid.get_gid()
+    }
 }
 
 impl Display for Group {

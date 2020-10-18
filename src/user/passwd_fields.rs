@@ -147,6 +147,10 @@ impl Gid {
         // since it is a u32  it cannot be smaller than 0
         self.gid < 1000
     }
+
+    pub const fn get_gid(&self) -> u32 {
+        self.gid
+    }
 }
 
 /// The home directory of a user

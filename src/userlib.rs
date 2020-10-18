@@ -16,7 +16,7 @@ use std::path::PathBuf;
 pub struct UserDBLocal {
     source_files: Files,
     pub users: HashMap<String, crate::User>,
-    pub group_entries: Vec<crate::Group>,
+    pub groups: Vec<crate::Group>,
 }
 
 pub struct Files {
@@ -55,7 +55,7 @@ impl UserDBLocal {
                 shadow: None,
             },
             users,
-            group_entries: groups,
+            groups,
         };
         res
     }
@@ -73,8 +73,50 @@ impl UserDBLocal {
         Self {
             source_files: files,
             users,
-            group_entries: string_to(&my_group_lines),
+            groups: string_to(&my_group_lines),
         }
+    }
+}
+use crate::api::UserDBRead;
+impl UserDBRead for UserDBLocal {
+    fn get_all_users(&self) -> Vec<&crate::User> {
+        self.users.iter().map(|(_, x)| x).collect()
+    }
+
+    fn get_user_by_name(&self, name: &str) -> Option<&crate::User> {
+        self.users.get(name)
+    }
+
+    fn get_user_by_id(&self, uid: u32) -> Option<&crate::User> {
+        // could probably be more efficient - on the other hand its no problem to loop a thousand users.
+        for (_, user) in self.users.iter() {
+            if user.get_uid() == uid {
+                return Some(&user);
+            }
+        }
+        None
+    }
+
+    fn get_all_groups(&self) -> Vec<&crate::Group> {
+        self.groups.iter().collect()
+    }
+
+    fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {
+        for group in self.groups.iter() {
+            if group.get_groupname() == name {
+                return Some(group);
+            }
+        }
+        None
+    }
+
+    fn get_group_by_id(&self, id: u32) -> Option<&crate::Group> {
+        for group in self.groups.iter() {
+            if group.get_gid() == id {
+                return Some(group);
+            }
+        }
+        None
     }
 }
 
@@ -129,7 +171,7 @@ where
         .lines()
         .filter_map(|line| {
             if line.len() > 5 {
-                println!("{}", line);
+                //println!("{}", line);
                 Some(T::new_from_string(line.to_owned()).expect("failed to read lines"))
             } else {
                 None
@@ -146,16 +188,27 @@ fn test_creator_user_db_local() {
 
 #[test]
 fn test_parsing_local_database() {
-    use std::fs::File;
-    use std::io::{BufReader, Read};
-    let passwd_file = File::open("/etc/passwd").unwrap();
-    let mut passwd_reader = BufReader::new(passwd_file);
-    let mut my_passwd_lines = "".to_string();
-    passwd_reader.read_to_string(&mut my_passwd_lines).unwrap();
-    let group_file = File::open("/etc/group").unwrap();
-    let mut group_reader = BufReader::new(group_file);
-    let mut my_group_lines = "".to_string();
-    group_reader.read_to_string(&mut my_group_lines).unwrap();
+    // Parse the worldreadable user database ignore the shadow database as this would require root privileges.
+    let my_passwd_lines = file_to_string(Some(&PathBuf::from("/etc/passwd")));
+    let my_group_lines = file_to_string(Some(&PathBuf::from("/etc/group")));
     let data = UserDBLocal::import_from_strings(&my_passwd_lines, "", &my_group_lines);
-    assert_eq!(data.group_entries.get(0).unwrap().get_groupname(), "root");
+    assert_eq!(data.groups.get(0).unwrap().get_groupname(), "root");
+}
+
+#[test]
+fn test_user_db_read_implementation() {
+    let pass = file_to_string(Some(&PathBuf::from("/etc/passwd")));
+    let group = file_to_string(Some(&PathBuf::from("/etc/group")));
+    let data = UserDBLocal::import_from_strings(&pass, "", &group);
+    // Usually there are more than 10 users
+    assert!(data.get_all_users().len() > 10);
+    assert!(data.get_user_by_name("root").is_some());
+    assert_eq!(data.get_user_by_name("root").unwrap().get_uid(), 0);
+    assert_eq!(data.get_user_by_id(0).unwrap().get_username(), "root");
+    assert!(data.get_all_groups().len() > 10);
+    assert!(data.get_group_by_name("root").is_some());
+    assert_eq!(data.get_group_by_name("root").unwrap().get_gid(), 0);
+    assert_eq!(data.get_group_by_id(0).unwrap().get_groupname(), "root");
+    assert!(data.get_user_by_name("norealnameforsure").is_none());
+    assert!(data.get_group_by_name("norealgroupforsure").is_none());
 }

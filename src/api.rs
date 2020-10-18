@@ -1,27 +1,27 @@
-trait UserDBRead {
-    fn get_all_users(&self) -> Vec<crate::User>;
-    fn get_user_by_name(&self, name: &str) -> Option<crate::User>;
-    fn get_user_by_id(&self, uid: u64) -> Option<crate::User>;
-    fn get_all_groups(&self) -> Vec<crate::Group>;
-    fn get_group_by_name(&self) -> Option<crate::Group>;
-    fn get_group_by_id(&self) -> Option<crate::Group>;
+pub trait UserDBRead {
+    fn get_all_users(&self) -> Vec<&crate::User>;
+    fn get_user_by_name(&self, name: &str) -> Option<&crate::User>;
+    fn get_user_by_id(&self, uid: u32) -> Option<&crate::User>;
+    fn get_all_groups(&self) -> Vec<&crate::Group>;
+    fn get_group_by_name(&self, name: &str) -> Option<&crate::Group>;
+    fn get_group_by_id(&self, name: u32) -> Option<&crate::Group>;
 }
 
-trait UserDBValidation {
+pub trait UserDBValidation {
     fn is_uid_valid_and_free(&self) -> bool;
     fn is_username_valid_and_free(&self) -> bool;
     fn is_gid_valid_and_free(&self) -> bool;
     fn is_groupname_valid_and_free(&self) -> bool;
 }
 
-trait UserDBWrite {
+pub trait UserDBWrite {
     fn delete_user(&self) -> Option<crate::User>;
     fn new_user(&self) -> Option<crate::User>;
     fn delete_group(&self) -> Option<crate::Group>;
     fn new_group(&self) -> Option<crate::Group>;
 }
 
-trait UserRead {
+pub trait UserRead {
     fn get_username(&self) -> Option<crate::User>;
     fn get_uid(&self) -> Option<crate::User>;
     fn get_gid(&self) -> Option<crate::User>;
@@ -36,7 +36,7 @@ trait UserRead {
     fn get_other(&self) -> Option<Vec<String>>;
 }
 
-trait UserWrite {
+pub trait UserWrite {
     fn set_username(&self) -> Option<crate::User>;
     fn set_uid(&self) -> Option<crate::User>;
     fn set_gid(&self) -> Option<crate::User>;
@@ -51,14 +51,14 @@ trait UserWrite {
     fn set_other(&self) -> Option<Vec<String>>;
 }
 
-trait GroupRead {
+pub trait GroupRead {
     fn get_groupname(&self) -> Option<crate::Group>;
     fn get_encrypted_password(&self) -> Option<crate::Group>;
     fn get_gid(&self) -> Option<crate::Group>;
     fn get_members(&self) -> Option<crate::Group>;
 }
 
-trait GroupWrite<T> {
+pub trait GroupWrite<T> {
     fn set_groupname(&self) -> Option<crate::Group>;
     fn set_password(&self) -> Option<crate::Group>;
     fn set_gid(&self) -> Option<crate::Group>;
