@@ -42,55 +42,19 @@ impl UserDBLocal {
         shadow_content: &str,
         group_content: &str,
     ) -> Self {
-        let shadow_entries: Vec<crate::Shadow> = shadow_content
-            .lines()
-            .filter_map(|line| {
-                if line.len() > 5 {
-                    Some(crate::Shadow::new_from_string(line.to_owned()).expect("Parsing failed"))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let mut res = Self {
+        let shadow_entries: Vec<crate::Shadow> = string_to(&shadow_content);
+        let mut users = user_vec_to_hashmap(string_to(&passwd_content));
+        let groups = string_to(&group_content);
+        shadow_to_users(&mut users, shadow_entries);
+        let res = Self {
             source_files: Files {
                 passwd: None,
                 group: None,
                 shadow: None,
             },
-            users: passwd_content
-                .lines()
-                .filter_map(|line| {
-                    if line.len() > 5 {
-                        println!("{}", line);
-                        let user = crate::User::new_from_string(line.to_owned())
-                            .expect("failed to read lines");
-                        Some((user.get_username().to_owned(), user))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-            group_entries: group_content
-                .lines()
-                .filter_map(|line| {
-                    if line.len() > 5 {
-                        Some(
-                            crate::Group::new_from_string(line.to_owned()).expect("Parsing failed"),
-                        )
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
+            users,
+            group_entries: groups,
         };
-        for shadow in shadow_entries {
-            let user = res.users.get_mut(shadow.get_username()).expect(&format!(
-                "the user {} does not exist",
-                shadow.get_username()
-            ));
-            user.password = crate::Password::Shadow(shadow);
-        }
         res
     }
 
