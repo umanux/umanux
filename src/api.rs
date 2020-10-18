@@ -8,10 +8,10 @@ pub trait UserDBRead {
 }
 
 pub trait UserDBValidation {
-    fn is_uid_valid_and_free(&self) -> bool;
-    fn is_username_valid_and_free(&self) -> bool;
-    fn is_gid_valid_and_free(&self) -> bool;
-    fn is_groupname_valid_and_free(&self) -> bool;
+    fn is_uid_valid_and_free(&self, uid: u32) -> bool;
+    fn is_username_valid_and_free(&self, name: &str) -> bool;
+    fn is_gid_valid_and_free(&self, gid: u32) -> bool;
+    fn is_groupname_valid_and_free(&self, name: &str) -> bool;
 }
 
 pub trait UserDBWrite {

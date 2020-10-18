@@ -120,6 +120,29 @@ impl UserDBRead for UserDBLocal {
     }
 }
 
+use crate::api::UserDBValidation;
+impl UserDBValidation for UserDBLocal {
+    fn is_uid_valid_and_free(&self, uid: u32) -> bool {
+        warn!("No valid check, only free check");
+        self.users.iter().all(|(_, u)| u.get_uid() != uid)
+    }
+
+    fn is_username_valid_and_free(&self, name: &str) -> bool {
+        warn!("No valid check, only free check");
+        self.get_user_by_name(name).is_none()
+    }
+
+    fn is_gid_valid_and_free(&self, gid: u32) -> bool {
+        warn!("No valid check, only free check");
+        self.groups.iter().all(|x| x.get_gid() != gid)
+    }
+
+    fn is_groupname_valid_and_free(&self, name: &str) -> bool {
+        warn!("No valid check, only free check");
+        self.groups.iter().all(|x| x.get_groupname() != name)
+    }
+}
+
 /// Parse a file to a string
 fn file_to_string(path: Option<&PathBuf>) -> String {
     let file = File::open(path.expect("Path cannot be None".into()))
