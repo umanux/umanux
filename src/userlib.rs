@@ -124,12 +124,14 @@ use crate::api::UserDBValidation;
 impl UserDBValidation for UserDBLocal {
     fn is_uid_valid_and_free(&self, uid: u32) -> bool {
         warn!("No valid check, only free check");
-        self.users.iter().all(|(_, u)| u.get_uid() != uid)
+        let free = self.users.iter().all(|(_, u)| u.get_uid() != uid);
+        free
     }
 
     fn is_username_valid_and_free(&self, name: &str) -> bool {
-        warn!("No valid check, only free check");
-        self.get_user_by_name(name).is_none()
+        let valid = crate::user::passwd_fields::is_username_valid(name);
+        let free = self.get_user_by_name(name).is_none();
+        valid && free
     }
 
     fn is_gid_valid_and_free(&self, gid: u32) -> bool {
@@ -139,7 +141,9 @@ impl UserDBValidation for UserDBLocal {
 
     fn is_groupname_valid_and_free(&self, name: &str) -> bool {
         warn!("No valid check, only free check");
-        self.groups.iter().all(|x| x.get_groupname() != name)
+        let valid = crate::group::is_groupname_valid(name);
+        let free = self.groups.iter().all(|x| x.get_groupname() != name);
+        valid && free
     }
 }
 

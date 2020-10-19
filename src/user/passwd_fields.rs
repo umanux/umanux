@@ -35,11 +35,7 @@ impl Display for Username {
 impl TryFrom<String> for Username {
     type Error = UserLibError;
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
-        lazy_static! {
-            static ref USERVALIDATION: Regex =
-                Regex::new("^[a-z_]([a-z0-9_\\-]{0,31}|[a-z0-9_\\-]{0,30}\\$)$").unwrap();
-        }
-        if USERVALIDATION.is_match(&source) {
+        if is_username_valid(&source) {
             Ok(Self { username: source })
         } else if source == "Debian-exim" {
             warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
@@ -51,6 +47,14 @@ impl TryFrom<String> for Username {
             )))
         }
     }
+}
+
+pub(crate) fn is_username_valid(name: &str) -> bool {
+    lazy_static! {
+        static ref USERVALIDATION: Regex =
+            Regex::new("^[a-z_]([a-z0-9_\\-]{0,31}|[a-z0-9_\\-]{0,30}\\$)$").unwrap();
+    }
+    USERVALIDATION.is_match(name)
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -30,11 +30,7 @@ impl Display for Groupname {
 impl TryFrom<String> for Groupname {
     type Error = UserLibError;
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
-        lazy_static! {
-            static ref USERVALIDATION: Regex =
-                Regex::new("^[a-z_]([a-z0-9_\\-]{0,31}|[a-z0-9_\\-]{0,30}\\$)$").unwrap();
-        }
-        if USERVALIDATION.is_match(&source) {
+        if is_groupname_valid(&source) {
             Ok(Self { groupname: source })
         } else if source == "Debian-exim" {
             warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
@@ -46,6 +42,11 @@ impl TryFrom<String> for Groupname {
             )))
         }
     }
+}
+
+pub(crate) fn is_groupname_valid(name: &str) -> bool {
+    // for now just use the username validation.
+    crate::user::passwd_fields::is_username_valid(name)
 }
 
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
