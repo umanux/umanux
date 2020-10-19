@@ -140,7 +140,6 @@ impl UserDBValidation for UserDBLocal {
     }
 
     fn is_groupname_valid_and_free(&self, name: &str) -> bool {
-        warn!("No valid check, only free check");
         let valid = crate::group::is_groupname_valid(name);
         let free = self.groups.iter().all(|x| x.get_groupname() != name);
         valid && free
