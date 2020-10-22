@@ -7,6 +7,8 @@
 )]
 #![allow(clippy::non_ascii_literal)]
 
+use crate::api::GroupRead;
+use crate::api::UserRead;
 use log::warn;
 use std::collections::HashMap;
 use std::fs::File;
@@ -103,7 +105,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {
         for group in self.groups.iter() {
-            if group.get_groupname() == name {
+            if group.get_groupname().unwrap() == name {
                 return Some(group);
             }
         }
@@ -112,7 +114,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_id(&self, id: u32) -> Option<&crate::Group> {
         for group in self.groups.iter() {
-            if group.get_gid() == id {
+            if group.get_gid().unwrap() == id {
                 return Some(group);
             }
         }
@@ -136,12 +138,15 @@ impl UserDBValidation for UserDBLocal {
 
     fn is_gid_valid_and_free(&self, gid: u32) -> bool {
         warn!("No valid check, only free check");
-        self.groups.iter().all(|x| x.get_gid() != gid)
+        self.groups.iter().all(|x| x.get_gid().unwrap() != gid)
     }
 
     fn is_groupname_valid_and_free(&self, name: &str) -> bool {
         let valid = crate::group::is_groupname_valid(name);
-        let free = self.groups.iter().all(|x| x.get_groupname() != name);
+        let free = self
+            .groups
+            .iter()
+            .all(|x| x.get_groupname().unwrap() != name);
         valid && free
     }
 }
@@ -174,14 +179,21 @@ fn shadow_to_users(
 fn user_vec_to_hashmap(users: Vec<crate::User>) -> HashMap<String, crate::User> {
     users
         .into_iter()
-        .map(|x| (x.get_username().to_owned(), x))
+        .map(|x| {
+            (
+                x.get_username()
+                    .expect("An empty username is not supported")
+                    .to_owned(),
+                x,
+            )
+        })
         .collect()
 }
 
 /// Try to parse a String into some Object
 ///
 /// # Errors
-/// if the parsing failed a [`UserLibError::Message`] is returned containing a more detailed error message.
+/// if the parsing failed a [`UserLibError::Message`](crate::userlib_error::UserLibError::Message) is returned containing a more detailed error message.
 pub trait NewFromString {
     fn new_from_string(line: String) -> Result<Self, crate::UserLibError>
     where
@@ -209,7 +221,10 @@ where
 #[test]
 fn test_creator_user_db_local() {
     let data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
-    assert_eq!(data.users.get("test").unwrap().get_username(), "test")
+    assert_eq!(
+        data.users.get("test").unwrap().get_username().unwrap(),
+        "test"
+    )
 }
 
 #[test]
@@ -218,7 +233,7 @@ fn test_parsing_local_database() {
     let my_passwd_lines = file_to_string(Some(&PathBuf::from("/etc/passwd")));
     let my_group_lines = file_to_string(Some(&PathBuf::from("/etc/group")));
     let data = UserDBLocal::import_from_strings(&my_passwd_lines, "", &my_group_lines);
-    assert_eq!(data.groups.get(0).unwrap().get_groupname(), "root");
+    assert_eq!(data.groups.get(0).unwrap().get_groupname().unwrap(), "root");
 }
 
 #[test]
@@ -230,11 +245,20 @@ fn test_user_db_read_implementation() {
     assert!(data.get_all_users().len() > 10);
     assert!(data.get_user_by_name("root").is_some());
     assert_eq!(data.get_user_by_name("root").unwrap().get_uid(), 0);
-    assert_eq!(data.get_user_by_id(0).unwrap().get_username(), "root");
+    assert_eq!(
+        data.get_user_by_id(0).unwrap().get_username().unwrap(),
+        "root"
+    );
     assert!(data.get_all_groups().len() > 10);
     assert!(data.get_group_by_name("root").is_some());
-    assert_eq!(data.get_group_by_name("root").unwrap().get_gid(), 0);
-    assert_eq!(data.get_group_by_id(0).unwrap().get_groupname(), "root");
+    assert_eq!(
+        data.get_group_by_name("root").unwrap().get_gid().unwrap(),
+        0
+    );
+    assert_eq!(
+        data.get_group_by_id(0).unwrap().get_groupname().unwrap(),
+        "root"
+    );
     assert!(data.get_user_by_name("norealnameforsure").is_none());
     assert!(data.get_group_by_name("norealgroupforsure").is_none());
 }

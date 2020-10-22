@@ -22,9 +22,9 @@ pub enum Gecos {
     },
 }
 
-impl<'a> Gecos {
+impl Gecos {
     #[must_use]
-    pub fn get_comment(&'a self) -> Option<&'a str> {
+    pub fn get_comment(&self) -> Option<&str> {
         match &self {
             Gecos::Simple { comment, .. } => Some(&comment),
             Gecos::Detail { .. } => None,
@@ -70,7 +70,7 @@ impl<'a> Gecos {
         }
     }
     #[must_use]
-    pub fn get_phone_home(&'_ self) -> Option<&'_ str> {
+    pub fn get_phone_home(&self) -> Option<&str> {
         match &self {
             Gecos::Simple { .. } => None,
             Gecos::Detail { phone_home, .. } => {

@@ -20,18 +20,19 @@ pub struct User {
 }
 
 impl NewFromString for User {
-    /// Parse a line formatted like one in `/etc/passwd` and construct a matching [`adduser::User`] instance
+    /// Parse a line formatted like one in `/etc/passwd` and construct a matching [`User`] instance
     ///
     /// # Example
     /// ```
+    /// use crate::adduser::api::UserRead;
     /// use adduser::NewFromString;
     /// let pwd = adduser::User::new_from_string(
     ///     "testuser:testpassword:1001:1001:full Name,,,,:/home/test:/bin/test".to_string()).unwrap();
-    /// assert_eq!(pwd.get_username(), "testuser");
+    /// assert_eq!(pwd.get_username().unwrap(), "testuser");
     /// ```
     ///
     /// # Errors
-    /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
+    /// When parsing fails this function returns a [`UserLibError::Message`](crate::userlib_error::UserLibError::Message) containing some information as to why the function failed.
     fn new_from_string(line: String) -> Result<Self, crate::UserLibError>
     where
         Self: Sized,
@@ -56,38 +57,58 @@ impl NewFromString for User {
     }
 }
 
-impl User {
+impl crate::api::UserRead for User {
     #[must_use]
-    pub fn get_username(&self) -> &str {
-        &self.username.username
+    fn get_username(&self) -> Option<&str> {
+        Some(&self.username.username)
     }
     #[must_use]
-    pub fn get_password(&self) -> &str {
+    fn get_password(&self) -> Option<&str> {
         match &self.password {
-            crate::Password::Encrypted(crate::EncryptedPassword { password }) => &password,
-            crate::Password::Shadow(crate::Shadow { ref password, .. }) => &password.password,
-            crate::Password::Disabled => &"x",
+            crate::Password::Encrypted(crate::EncryptedPassword { password }) => Some(&password),
+            crate::Password::Shadow(crate::Shadow { ref password, .. }) => Some(&password.password),
+            crate::Password::Disabled => None,
         }
     }
     #[must_use]
-    pub const fn get_uid(&self) -> u32 {
+    fn get_uid(&self) -> u32 {
         self.uid.uid
     }
     #[must_use]
-    pub const fn get_gid(&self) -> u32 {
+    fn get_gid(&self) -> u32 {
         self.gid.gid
     }
     #[must_use]
-    pub const fn get_comment(&self) -> &crate::Gecos {
-        &self.gecos
+    fn get_gecos(&self) -> Option<&crate::Gecos> {
+        Some(&self.gecos)
     }
     #[must_use]
-    pub fn get_home_dir(&self) -> &str {
-        &self.home_dir.dir
+    fn get_home_dir(&self) -> Option<&str> {
+        Some(&self.home_dir.dir)
     }
     #[must_use]
-    pub fn get_shell_path(&self) -> &str {
-        &self.shell_path.shell
+    fn get_shell_path(&self) -> Option<&str> {
+        Some(&self.shell_path.shell)
+    }
+
+    fn get_full_name(&self) -> Option<&str> {
+        self.gecos.get_full_name()
+    }
+
+    fn get_room(&self) -> Option<&str> {
+        self.gecos.get_room()
+    }
+
+    fn get_phone_work(&self) -> Option<&str> {
+        self.gecos.get_phone_work()
+    }
+
+    fn get_phone_home(&self) -> Option<&str> {
+        self.gecos.get_phone_home()
+    }
+
+    fn get_other(&self) -> Option<&Vec<String>> {
+        self.gecos.get_other()
     }
 }
 

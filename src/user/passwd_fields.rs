@@ -23,7 +23,7 @@ use std::fmt::{self, Display};
 #[derive(Debug, PartialEq, Eq)]
 pub struct Username {
     /// The username value
-    pub(in crate::user) username: String,
+    pub(crate) username: String,
 }
 
 impl Display for Username {

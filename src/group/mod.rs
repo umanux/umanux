@@ -9,7 +9,6 @@
 
 use crate::userlib::NewFromString;
 use log::warn;
-use regex::Regex;
 
 use crate::userlib_error::UserLibError;
 use std::cmp::Eq;
@@ -58,18 +57,27 @@ pub struct Group {
     members: Vec<crate::Username>,        /* Real name.  */
 }
 
-impl Group {
+use crate::api::GroupRead;
+impl GroupRead for Group {
     #[must_use]
-    pub fn get_groupname(&self) -> &str {
-        &self.groupname.groupname
+    fn get_groupname(&self) -> Option<&str> {
+        Some(&self.groupname.groupname)
     }
     #[must_use]
-    pub const fn get_members(&self) -> &Vec<crate::Username> {
-        &self.members
+    fn get_member_names(&self) -> Option<Vec<&str>> {
+        let mut r: Vec<&str> = Vec::new();
+        for u in self.members.iter() {
+            r.push(&u.username);
+        }
+        Some(r)
     }
 
-    pub fn get_gid(&self) -> u32 {
-        self.gid.get_gid()
+    fn get_gid(&self) -> Option<u32> {
+        Some(self.gid.get_gid())
+    }
+
+    fn get_encrypted_password(&self) -> Option<&str> {
+        todo!()
     }
 }
 
@@ -91,14 +99,16 @@ impl Display for Group {
 }
 
 impl NewFromString for Group {
-    /// Parse a line formatted like one in `/etc/shadow` and construct a matching `Shadow` instance
+    /// Parse a line formatted like one in `/etc/group` and construct a matching [`Group`] instance
     ///
     /// # Example
     /// ```
-    /// /*let shad = adduser::shadow::Shadow::new_from_string(
-    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::"
+    /// use crate::adduser::api::GroupRead;
+    /// use adduser::NewFromString;
+    /// let grp = adduser::Group::new_from_string(
+    ///     "teste:x:1002:test,teste".to_owned()
     /// ).unwrap();
-    /// assert_eq!(shad.get_username(), "test");*/
+    /// assert_eq!(grp.get_groupname().unwrap(), "teste");
     /// ```
     ///
     /// # Errors
@@ -148,11 +158,11 @@ fn test_parse_and_back_identity() {
 fn test_groupname() {
     let line = "teste:x:1002:test,teste";
     let line2 = Group::new_from_string(line.to_owned()).unwrap();
-    assert_eq!(line2.get_groupname(), "teste");
+    assert_eq!(line2.get_groupname().unwrap(), "teste");
 }
 #[test]
 fn test_root_group() {
     let line = "root:x:0:";
     let line2 = Group::new_from_string(line.to_owned()).unwrap();
-    assert_eq!(line2.get_groupname(), "root");
+    assert_eq!(line2.get_groupname().unwrap(), "root");
 }

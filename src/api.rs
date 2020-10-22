@@ -22,40 +22,40 @@ pub trait UserDBWrite {
 }
 
 pub trait UserRead {
-    fn get_username(&self) -> Option<crate::User>;
-    fn get_uid(&self) -> Option<crate::User>;
-    fn get_gid(&self) -> Option<crate::User>;
-    fn get_password(&self) -> Option<crate::User>;
-    fn get_gecos(&self) -> Option<crate::User>;
-    fn get_home_dir(&self) -> Option<crate::User>;
-    fn get_shell_path(&self) -> Option<crate::User>;
-    fn get_full_name(&self) -> Option<String>;
-    fn get_room(&self) -> Option<String>;
-    fn get_phone_work(&self) -> Option<String>;
-    fn get_phone_home(&self) -> Option<String>;
-    fn get_other(&self) -> Option<Vec<String>>;
+    fn get_username(&self) -> Option<&str>;
+    fn get_uid(&self) -> u32;
+    fn get_gid(&self) -> u32;
+    fn get_password(&self) -> Option<&str>;
+    fn get_gecos(&self) -> Option<&crate::Gecos>;
+    fn get_home_dir(&self) -> Option<&str>;
+    fn get_shell_path(&self) -> Option<&str>;
+    fn get_full_name(&self) -> Option<&str>;
+    fn get_room(&self) -> Option<&str>;
+    fn get_phone_work(&self) -> Option<&str>;
+    fn get_phone_home(&self) -> Option<&str>;
+    fn get_other(&self) -> Option<&Vec<String>>;
 }
 
 pub trait UserWrite {
-    fn set_username(&self) -> Option<crate::User>;
-    fn set_uid(&self) -> Option<crate::User>;
-    fn set_gid(&self) -> Option<crate::User>;
-    fn set_password(&self) -> Option<crate::User>;
-    fn set_gecos(&self) -> Option<crate::User>;
-    fn set_home_dir(&self) -> Option<crate::User>;
-    fn set_shell_path(&self) -> Option<crate::User>;
-    fn set_full_name(&self) -> Option<String>;
-    fn set_room(&self) -> Option<String>;
-    fn set_phone_work(&self) -> Option<String>;
-    fn set_phone_home(&self) -> Option<String>;
-    fn set_other(&self) -> Option<Vec<String>>;
+    fn set_username(&self, username: String);
+    fn set_uid(&self, uid: u32);
+    fn set_gid(&self, gid: u32);
+    fn set_password(&self, password: String);
+    fn set_gecos(&self, gecos: crate::Gecos);
+    fn set_home_dir(&self, home_dir: String);
+    fn set_shell_path(&self, shell_path: String);
+    fn set_full_name(&self, full_name: String);
+    fn set_room(&self, room: String);
+    fn set_phone_work(&self, phone_work: String);
+    fn set_phone_home(&self, phone_home: String);
+    fn set_other(&self, other: Option<Vec<String>>);
 }
 
 pub trait GroupRead {
-    fn get_groupname(&self) -> Option<crate::Group>;
-    fn get_encrypted_password(&self) -> Option<crate::Group>;
-    fn get_gid(&self) -> Option<crate::Group>;
-    fn get_members(&self) -> Option<crate::Group>;
+    fn get_groupname(&self) -> Option<&str>;
+    fn get_encrypted_password(&self) -> Option<&str>;
+    fn get_gid(&self) -> Option<u32>;
+    fn get_member_names(&self) -> Option<Vec<&str>>;
 }
 
 pub trait GroupWrite<T> {
