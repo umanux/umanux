@@ -106,15 +106,15 @@ impl NewFromString for Group {
     /// use crate::adduser::api::GroupRead;
     /// use adduser::NewFromString;
     /// let grp = adduser::Group::new_from_string(
-    ///     "teste:x:1002:test,teste".to_owned()
+    ///     "teste:x:1002:test,teste".to_owned(),
+    ///     0,
     /// ).unwrap();
     /// assert_eq!(grp.get_groupname().unwrap(), "teste");
     /// ```
     ///
     /// # Errors
     /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
-    fn new_from_string(line: String) -> Result<Self, UserLibError> {
-        println!("{}", &line);
+    fn new_from_string(line: String, position: u32) -> Result<Self, UserLibError> {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 4 {
             Ok(Self {
@@ -150,19 +150,19 @@ fn parse_members_list(source: &str) -> Vec<crate::Username> {
 #[test]
 fn test_parse_and_back_identity() {
     let line = "teste:x:1002:test,teste";
-    let line2 = Group::new_from_string(line.to_owned()).unwrap();
+    let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(format!("{}", line2), line);
 }
 
 #[test]
 fn test_groupname() {
     let line = "teste:x:1002:test,teste";
-    let line2 = Group::new_from_string(line.to_owned()).unwrap();
+    let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(line2.get_groupname().unwrap(), "teste");
 }
 #[test]
 fn test_root_group() {
     let line = "root:x:0:";
-    let line2 = Group::new_from_string(line.to_owned()).unwrap();
+    let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(line2.get_groupname().unwrap(), "root");
 }

@@ -10,6 +10,7 @@ use std::fmt::{self, Display};
 #[derive(Debug, PartialEq, Eq)]
 pub struct User {
     source: String,
+    pos: u32,
     username: crate::Username,            /* Username.  */
     pub(crate) password: crate::Password, /* Hashed passphrase, if shadow database not in use (see shadow.h).  */
     uid: crate::Uid,                      /* User ID.  */
@@ -27,13 +28,13 @@ impl NewFromString for User {
     /// use crate::adduser::api::UserRead;
     /// use adduser::NewFromString;
     /// let pwd = adduser::User::new_from_string(
-    ///     "testuser:testpassword:1001:1001:full Name,,,,:/home/test:/bin/test".to_string()).unwrap();
+    ///     "testuser:testpassword:1001:1001:full Name,,,,:/home/test:/bin/test".to_string(), 0).unwrap();
     /// assert_eq!(pwd.get_username().unwrap(), "testuser");
     /// ```
     ///
     /// # Errors
     /// When parsing fails this function returns a [`UserLibError::Message`](crate::userlib_error::UserLibError::Message) containing some information as to why the function failed.
-    fn new_from_string(line: String) -> Result<Self, crate::UserLibError>
+    fn new_from_string(line: String, position: u32) -> Result<Self, crate::UserLibError>
     where
         Self: Sized,
     {
@@ -41,6 +42,7 @@ impl NewFromString for User {
         if elements.len() == 7 {
             Ok(Self {
                 source: line,
+                pos: position,
                 username: crate::Username::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Encrypted(crate::EncryptedPassword::try_from(
                     elements.get(1).unwrap().to_string(),
@@ -112,10 +114,23 @@ impl crate::api::UserRead for User {
     }
 }
 
+impl PartialOrd for User {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.pos.cmp(&other.pos))
+    }
+}
+
+impl Ord for User {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.pos.cmp(&other.pos)
+    }
+}
+
 impl Default for User {
     fn default() -> Self {
         Self {
             source: "".to_owned(),
+            pos: u32::MAX,
             username: crate::Username {
                 username: "defaultuser".to_owned(),
             },
@@ -165,17 +180,18 @@ fn test_default_user() {
 #[test]
 fn test_new_from_string() {
     // Test if a single line can be parsed and if the resulting struct is populated correctly.
-    let fail = User::new_from_string("".into()).err().unwrap();
+    let fail = User::new_from_string("".into(), 0).err().unwrap();
     assert_eq!(
         fail,
         crate::UserLibError::Message("Failed to parse: not enough elements".into())
     );
     let pwd = User::new_from_string(
         "testuser:testpassword:1001:1001:testcomment:/home/test:/bin/test".into(),
+        0,
     )
     .unwrap();
     let pwd2 =
-        User::new_from_string("testuser:testpassword:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test".into())
+        User::new_from_string("testuser:testpassword:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test".into(),0)
             .unwrap();
     assert_eq!(pwd.username.username, "testuser");
     assert_eq!(pwd.home_dir.dir, "/home/test");
@@ -210,10 +226,10 @@ fn test_parse_passwd() {
     let file = File::open("/etc/passwd").unwrap();
     let reader = BufReader::new(file);
 
-    for line in reader.lines() {
+    for (n, line) in reader.lines().enumerate() {
         let lineorig: String = line.unwrap();
         let linecopy = lineorig.clone();
-        let pass_struc = User::new_from_string(linecopy).unwrap();
+        let pass_struc = User::new_from_string(linecopy, n as u32).unwrap();
         assert_eq!(
             // ignoring the numbers of `,` since the implementation does not (yet) reproduce a missing comment field.
             lineorig,

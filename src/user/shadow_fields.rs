@@ -85,15 +85,15 @@ impl NewFromString for Shadow {
     /// ```
     /// use adduser::NewFromString;
     /// let shad = adduser::Shadow::new_from_string(
-    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string()
+    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string(),
+    ///     0,
     /// ).unwrap();
     /// assert_eq!(shad.get_username(), "test");
     /// ```
     ///
     /// # Errors
     /// When parsing fails this function returns a `UserLibError::Message` containing some information as to why the function failed.
-    fn new_from_string(line: String) -> Result<Self, UserLibError> {
-        println!("{}", &line);
+    fn new_from_string(line: String, position: u32) -> Result<Self, UserLibError> {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 9 {
             let extra = elements.get(8).unwrap();
@@ -144,9 +144,7 @@ fn duration_for_days(days_source: &str) -> Option<chrono::Duration> {
 
 #[test]
 fn test_parse_and_back_identity() {
-    println!("Test");
     let line = "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::";
-    let line2 = Shadow::new_from_string(line.to_owned()).unwrap();
-    println!("{:#?}", line2);
+    let line2 = Shadow::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(format!("{}", line2), line);
 }

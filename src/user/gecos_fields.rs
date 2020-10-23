@@ -205,7 +205,6 @@ fn test_gecos_getters() {
     assert_eq!(res_simple.get_comment(), Some("A böring comment →"));
 
     assert_eq!(res_detail.get_comment(), None);
-    println!("{:?}", res_detail);
     assert_eq!(res_detail.get_full_name(), Some("Full Name"));
     assert_eq!(res_detail.get_room(), Some("504"));
     assert_eq!(res_detail.get_phone_work(), Some("11345342"));

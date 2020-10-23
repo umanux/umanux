@@ -145,7 +145,9 @@ impl UserDBWrite for UserDBLocal {
 use crate::api::UserDBRead;
 impl UserDBRead for UserDBLocal {
     fn get_all_users(&self) -> Vec<&crate::User> {
-        self.users.iter().map(|(_, x)| x).collect()
+        let mut res: Vec<&crate::User> = self.users.iter().map(|(_, x)| x).collect();
+        res.sort();
+        res
     }
 
     fn get_user_by_name(&self, name: &str) -> Option<&crate::User> {
@@ -258,7 +260,7 @@ fn user_vec_to_hashmap(users: Vec<crate::User>) -> HashMap<String, crate::User> 
 /// # Errors
 /// if the parsing failed a [`UserLibError::Message`](crate::userlib_error::UserLibError::Message) is returned containing a more detailed error message.
 pub trait NewFromString {
-    fn new_from_string(line: String) -> Result<Self, crate::UserLibError>
+    fn new_from_string(line: String, position: u32) -> Result<Self, crate::UserLibError>
     where
         Self: Sized;
 }
@@ -270,10 +272,10 @@ where
 {
     source
         .lines()
-        .filter_map(|line| {
+        .enumerate()
+        .filter_map(|(n, line)| {
             if line.len() > 5 {
-                //println!("{}", line);
-                Some(T::new_from_string(line.to_owned()).expect("failed to read lines"))
+                Some(T::new_from_string(line.to_owned(), n as u32).expect("failed to read lines"))
             } else {
                 None
             }
