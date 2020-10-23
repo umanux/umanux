@@ -92,16 +92,16 @@ impl UserDBWrite for UserDBLocal {
 
     fn new_user(
         &mut self, /*
-        username: String,
-        enc_password: String,
-        uid: u32,
-        gid: u32,
-        full_name: String,
-        room: String,
-        phone_work: String,
-        phone_home: String,
-        other: Option<Vec<String>>,
-        home_dir: String,
+                   username: String,
+                   enc_password: String,
+                   uid: u32,
+                   gid: u32,
+                   full_name: String,
+                   room: String,
+                   phone_work: String,
+                   phone_home: String,
+                   other: Option<Vec<String>>,
+                   home_dir: String,
                    shell_path: String,*/
     ) -> Result<&crate::User, crate::UserLibError> {
         /*if self.users.contains_key(&username) {
@@ -213,6 +213,15 @@ impl UserDBValidation for UserDBLocal {
             .iter()
             .all(|x| x.get_groupname().unwrap() != name);
         valid && free
+    }
+}
+
+fn get_nth_line(path: Option<&PathBuf>, n: u32) -> String {
+    let lines = file_to_string(path);
+    let line = lines.lines().nth(n as usize);
+    match line {
+        Some(line) => line.to_owned(),
+        None => "".to_owned(),
     }
 }
 
