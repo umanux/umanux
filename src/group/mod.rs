@@ -51,6 +51,8 @@ pub(crate) fn is_groupname_valid(name: &str) -> bool {
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Group {
+    pos: u32,
+    source: String,
     groupname: Groupname,                 /* Username.  */
     pub(crate) password: crate::Password, /* Usually not used (disabled with x) */
     gid: crate::Gid,                      /* Group ID.  */
@@ -118,6 +120,8 @@ impl NewFromString for Group {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 4 {
             Ok(Self {
+                pos: position,
+                source: line.clone(),
                 groupname: Groupname::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Disabled,
                 gid: crate::Gid::try_from(elements.get(2).unwrap().to_string())?,

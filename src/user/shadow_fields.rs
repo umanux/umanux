@@ -16,8 +16,10 @@ use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display};
 
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Shadow {
+    pos: u32,
+    source: String,
     username: crate::Username,                      /* Username.  */
     pub(crate) password: crate::EncryptedPassword,  /* Hashed passphrase */
     last_change: Option<chrono::NaiveDateTime>,     /* User ID.  */
@@ -98,6 +100,8 @@ impl NewFromString for Shadow {
         if elements.len() == 9 {
             let extra = elements.get(8).unwrap();
             Ok(Self {
+                pos: position,
+                source: line.clone(),
                 username: crate::Username::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::EncryptedPassword::try_from(elements.get(1).unwrap().to_string())?,
                 last_change: date_since_epoch(elements.get(2).unwrap()),

@@ -20,7 +20,7 @@ use std::fmt::{self, Display};
 /// When done the validity will automatically be checked in the `trait TryFrom`.
 ///
 /// In the future some extra fields might be added.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Username {
     /// The username value
     pub(crate) username: String,
@@ -57,7 +57,7 @@ pub(crate) fn is_username_valid(name: &str) -> bool {
     USERVALIDATION.is_match(name)
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Password {
     Encrypted(crate::EncryptedPassword),
     Shadow(crate::Shadow),
@@ -74,7 +74,7 @@ impl Display for Password {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EncryptedPassword {
     pub(in crate::user) password: String,
 }
@@ -97,7 +97,7 @@ impl TryFrom<String> for EncryptedPassword {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Uid {
     pub(in crate::user) uid: u32,
 }
@@ -125,7 +125,7 @@ impl Uid {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Gid {
     pub(in crate::user) gid: u32,
 }
@@ -158,7 +158,7 @@ impl Gid {
 }
 
 /// The home directory of a user
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct HomeDir {
     pub(in crate::user) dir: String,
 }
@@ -177,7 +177,7 @@ impl TryFrom<String> for HomeDir {
 }
 
 /// The path to the Shell binary
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ShellPath {
     pub(in crate::user) shell: String,
 }

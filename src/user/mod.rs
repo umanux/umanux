@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
 /// A record(line) in the user database `/etc/passwd` found in most linux systems.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct User {
     source: String,
     pos: u32,

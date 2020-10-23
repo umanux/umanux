@@ -8,7 +8,7 @@ use std::fmt::{self, Display};
 /// The first 4 values are more or less standardised to be full name, room, phone at work and phone at home. After that there can be some extra fields often containing the emailadress and even additional information.
 ///
 /// This enum represents the first 4 values by name and adds the other values to a list of strings [`Gecos::Detail`]. If only one field is found and no `,` at all this value is used as a human readable comment [`Gecos::Simple`].
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Gecos {
     Detail {
         full_name: String,
