@@ -1,4 +1,5 @@
 pub mod gecos_fields;
+
 pub mod passwd_fields;
 pub mod shadow_fields;
 
@@ -18,6 +19,35 @@ pub struct User {
     gecos: crate::Gecos,                  /* Real name.  */
     home_dir: crate::HomeDir,             /* Home directory.  */
     shell_path: crate::ShellPath,         /* Shell program.  */
+}
+
+impl User {
+    pub fn username(&mut self, name: String) -> &mut Self {
+        self.username = crate::Username {
+            username: name.into(),
+        };
+        self
+    }
+    pub fn disable_password(&mut self) -> &mut Self {
+        self.password = crate::Password::Disabled;
+        self
+    }
+    pub fn uid(&mut self, uid: u32) -> &mut Self {
+        self.uid = crate::Uid { uid };
+        self
+    }
+    pub fn gid(&mut self, gid: u32) -> &mut Self {
+        self.gid = crate::Gid { gid };
+        self
+    }
+    pub fn home_dir(&mut self, path: String) -> &mut Self {
+        self.home_dir = crate::HomeDir { dir: path };
+        self
+    }
+    pub fn shell_path(&mut self, path: String) -> &mut Self {
+        self.shell_path = crate::ShellPath { shell: path };
+        self
+    }
 }
 
 impl NewFromString for User {
@@ -132,21 +162,19 @@ impl Default for User {
             source: "".to_owned(),
             pos: u32::MAX,
             username: crate::Username {
-                username: "defaultuser".to_owned(),
+                username: "defaultusername".to_owned(),
             },
-            password: crate::Password::Encrypted(crate::EncryptedPassword {
-                password: "notencrypted".to_owned(),
-            }),
+            password: crate::Password::Disabled,
             uid: crate::Uid { uid: 1001 },
             gid: crate::Gid { gid: 1001 },
             gecos: crate::Gecos::Simple {
-                comment: "gecos default comment".to_string(),
+                comment: "".to_string(),
             },
             home_dir: crate::HomeDir {
-                dir: "/home/default".to_owned(),
+                dir: "/".to_owned(),
             },
             shell_path: crate::ShellPath {
-                shell: "/bin/bash".to_owned(),
+                shell: "/bin/nologin".to_owned(),
             },
         }
     }
@@ -171,10 +199,12 @@ impl Display for User {
 #[test]
 fn test_default_user() {
     // Check if a user can be created.
-    let pwd = User::default();
+    let mut pwd = User::default();
     assert_eq!(pwd.username.username, "defaultuser");
     assert_eq!(pwd.home_dir.dir, "/home/default");
     assert_eq!(pwd.uid.uid, 1001);
+    let npw = pwd.username("test".to_owned()).clone();
+    assert_eq!(npw.username.username, "test");
 }
 
 #[test]
