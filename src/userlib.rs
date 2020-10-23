@@ -91,7 +91,7 @@ impl UserDBWrite for UserDBLocal {
     }
 
     fn new_user(
-        &mut self,
+        &mut self, /*
         username: String,
         enc_password: String,
         uid: u32,
@@ -102,7 +102,7 @@ impl UserDBWrite for UserDBLocal {
         phone_home: String,
         other: Option<Vec<String>>,
         home_dir: String,
-        shell_path: String,
+                   shell_path: String,*/
     ) -> Result<&crate::User, crate::UserLibError> {
         /*if self.users.contains_key(&username) {
             Err(format!(

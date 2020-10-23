@@ -17,18 +17,18 @@ pub trait UserDBValidation {
 pub trait UserDBWrite {
     fn delete_user(&mut self, user: &str) -> Result<crate::User, crate::UserLibError>;
     fn new_user(
-        &mut self,
-        username: String,
-        enc_password: String,
-        uid: u32,
-        gid: u32,
-        full_name: String,
-        room: String,
-        phone_work: String,
-        phone_home: String,
-        other: Option<Vec<String>>,
-        home_dir: String,
-        shell_path: String,
+        &mut self, /*
+                   username: String,
+                   enc_password: String,
+                   uid: u32,
+                   gid: u32,
+                   full_name: String,
+                   room: String,
+                   phone_work: String,
+                   phone_home: String,
+                   other: Option<Vec<String>>,
+                   home_dir: String,
+                   shell_path: String,*/
     ) -> Result<&crate::User, crate::UserLibError>;
     fn delete_group(&mut self, group: &crate::Group) -> Result<(), crate::UserLibError>;
     fn new_group(&mut self) -> Result<&crate::Group, crate::UserLibError>;
