@@ -79,6 +79,69 @@ impl UserDBLocal {
         }
     }
 }
+
+use crate::api::UserDBWrite;
+impl UserDBWrite for UserDBLocal {
+    fn delete_user(&mut self, user: &str) -> Result<crate::User, crate::UserLibError> {
+        let res = self.users.remove(user);
+        match res {
+            Some(user) => Ok(user),
+            None => Err(format!("Failed to delete the user {}", user).into()),
+        }
+    }
+
+    fn new_user(
+        &mut self,
+        username: String,
+        enc_password: String,
+        uid: u32,
+        gid: u32,
+        full_name: String,
+        room: String,
+        phone_work: String,
+        phone_home: String,
+        other: Option<Vec<String>>,
+        home_dir: String,
+        shell_path: String,
+    ) -> Result<&crate::User, crate::UserLibError> {
+        /*if self.users.contains_key(&username) {
+            Err(format!(
+                "The username {} already exists! Aborting!",
+                username
+            )
+            .into())
+        } else {
+            let pwd = if self.source_files.shadow.is_none(){
+                crate::Password::Encrypted(crate::EncryptedPassword{});
+            }
+            else{
+                crate::Password::Shadow(crate::Shadow{})
+            }
+            self.users.insert(
+                username,
+                crate::User {
+                    username: crate::Username { username },
+                    password:,
+                    uid: crate::Uid{uid},
+                    gid:crate::Gid{gid},
+                    gecos: crate::Gecos{},
+                    home_dir:crate::HomeDir{dir: home_dir},
+                    shell_path: crate::ShellPath{shell: shell_path},
+                },
+            )
+        }*/
+        todo!()
+    }
+
+    fn delete_group(&mut self, group: &crate::Group) -> Result<(), crate::UserLibError> {
+        todo!()
+    }
+
+    fn new_group(&mut self) -> Result<&crate::Group, crate::UserLibError> {
+        todo!()
+    }
+}
+
 use crate::api::UserDBRead;
 impl UserDBRead for UserDBLocal {
     fn get_all_users(&self) -> Vec<&crate::User> {
@@ -261,4 +324,15 @@ fn test_user_db_read_implementation() {
     );
     assert!(data.get_user_by_name("norealnameforsure").is_none());
     assert!(data.get_group_by_name("norealgroupforsure").is_none());
+}
+
+#[test]
+fn test_user_db_write_implementation() {
+    let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
+    let user = "test";
+
+    assert_eq!(data.get_all_users().len(), 1);
+    assert!(data.delete_user(&user).is_ok());
+    assert!(data.delete_user(&user).is_err());
+    assert_eq!(data.get_all_users().len(), 0);
 }

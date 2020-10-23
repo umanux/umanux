@@ -16,14 +16,16 @@ pub enum ParseError {
 pub enum UserLibError {
     NotFound,
     ParseError,
+    FilesChanged,
     Message(String),
 }
 
 impl Display for UserLibError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::NotFound => write!(f, ""),
-            Self::ParseError => write!(f, "Failed to parse"), // TODO details
+            Self::NotFound => write!(f, "{}", self.to_string()),
+            Self::ParseError => write!(f, "{}", self.to_string()),
+            Self::FilesChanged => write!(f, "{}", self.to_string()),
             Self::Message(message) => write!(f, "{}", message),
         }
     }
@@ -34,6 +36,7 @@ impl Error for UserLibError {
         match self {
             Self::NotFound => "not found",
             Self::ParseError => "failed to parse",
+            Self::FilesChanged => "The files changed. Updating could lead to conflict aborting.",
             Self::Message(message) => message,
         }
     }
@@ -42,5 +45,11 @@ impl Error for UserLibError {
 impl From<&str> for UserLibError {
     fn from(err: &str) -> Self {
         Self::Message(err.to_owned())
+    }
+}
+
+impl From<String> for UserLibError {
+    fn from(err: String) -> Self {
+        Self::Message(err)
     }
 }
