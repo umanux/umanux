@@ -15,5 +15,5 @@ pub use user::passwd_fields::{
 };
 pub use user::shadow_fields::Shadow;
 pub use user::User;
-pub use userlib::NewFromString;
+pub use userlib::{Files, NewFromString, UserDBLocal};
 pub use userlib_error::UserLibError;
