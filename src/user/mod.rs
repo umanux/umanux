@@ -123,22 +123,27 @@ impl crate::api::UserRead for User {
         Some(&self.shell_path.shell)
     }
 
+    #[must_use]
     fn get_full_name(&self) -> Option<&str> {
         self.gecos.get_full_name()
     }
 
+    #[must_use]
     fn get_room(&self) -> Option<&str> {
         self.gecos.get_room()
     }
 
+    #[must_use]
     fn get_phone_work(&self) -> Option<&str> {
         self.gecos.get_phone_work()
     }
 
+    #[must_use]
     fn get_phone_home(&self) -> Option<&str> {
         self.gecos.get_phone_home()
     }
 
+    #[must_use]
     fn get_other(&self) -> Option<&Vec<String>> {
         self.gecos.get_other()
     }
