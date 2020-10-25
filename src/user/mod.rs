@@ -205,8 +205,8 @@ impl Display for User {
 fn test_default_user() {
     // Check if a user can be created.
     let mut pwd = User::default();
-    assert_eq!(pwd.username.username, "defaultuser");
-    assert_eq!(pwd.home_dir.dir, "/home/default");
+    assert_eq!(pwd.username.username, "defaultusername");
+    assert_eq!(pwd.home_dir.dir, "/");
     assert_eq!(pwd.uid.uid, 1001);
     let npw = pwd.username("test".to_owned()).clone();
     assert_eq!(npw.username.username, "test");

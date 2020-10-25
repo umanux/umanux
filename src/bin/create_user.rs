@@ -7,9 +7,9 @@ fn main() {
         simplelog::TerminalMode::Mixed,
     )])
     .unwrap();
-    use adduser::api::UserDBWrite;
+    //use adduser::api::UserDBWrite;
 
-    let mut db = adduser::UserDBLocal::load_files(adduser::Files::default());
+    let _db = adduser::UserDBLocal::load_files(adduser::Files::default());
 
     let user = adduser::User::default()
         .username("fest".into())

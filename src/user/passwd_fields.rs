@@ -89,9 +89,9 @@ impl TryFrom<String> for EncryptedPassword {
     type Error = UserLibError;
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
         if source == "x" {
-            warn!("password from shadow not loaded!")
+            //warn!("password from shadow not loaded!")
         } else {
-            warn!("Password field has an unexpected value")
+            //warn!("Password field has an unexpected value")
         };
         Ok(Self { password: source })
     }
