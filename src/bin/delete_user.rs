@@ -1,12 +1,10 @@
 extern crate adduser;
 
+extern crate env_logger;
+
 fn main() {
-    simplelog::CombinedLogger::init(vec![simplelog::TermLogger::new(
-        simplelog::LevelFilter::Warn,
-        simplelog::Config::default(),
-        simplelog::TerminalMode::Mixed,
-    )])
-    .unwrap();
+    env_logger::init();
+
     use adduser::api::UserDBWrite;
 
     let mut db = adduser::UserDBLocal::load_files(adduser::Files::default());
