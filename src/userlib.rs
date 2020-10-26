@@ -12,6 +12,7 @@ use crate::api::UserRead;
 use log::{debug, error, info, warn};
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::{collections::HashMap, io::Write};
 
@@ -48,6 +49,15 @@ impl Files {
     pub fn lock_and_get_group(&self) -> Result<LockedFileGuard, crate::UserLibError> {
         LockedFileGuard::new(self.group.as_ref().unwrap())
     }
+
+    pub fn lock_all_get(
+        &self,
+    ) -> Result<(LockedFileGuard, LockedFileGuard, LockedFileGuard), crate::UserLibError> {
+        let pwd = self.lock_and_get_passwd()?;
+        let shd = self.lock_and_get_shadow()?;
+        let grp = self.lock_and_get_group()?;
+        Ok((pwd, shd, grp))
+    }
 }
 
 pub struct LockedFileGuard {
@@ -63,59 +73,82 @@ impl LockedFileGuard {
             Err(e) => Err(e),
         }
     }
+
+    /// This function tries to lock a file in the way other passwd locking mechanisms work.
+    ///
+    /// * get the pid
+    /// * create the temporary lockfilepath "/etc/passwd.12397"
+    /// * create the lockfilepath "/etc/passwd.lock"
+    /// * open the temporary file
+    /// * write the pid to the tempfile
+    /// * try to make a link from the temporary file created to the lockfile
+    /// * ensure that the file has been linked successfully
+    ///
+    /// when the link could not be created:
+    ///
+    /// * Open the lockfile
+    /// * read the contents of the lockfile
+    /// * check if the lockfile contains a pid if not error out
+    /// * check if the containing pid is in a valid format. If not create a matching error
+    ///
+    /// not implemented yet:
+    ///
+    /// * test if this process could be killed. If so disclose the pid in the error.
+    /// * try to delete the lockfile as it is apparently not used by the process anmore. (cleanup)
+    /// * try to lock again now that the old logfile has been safely removed.
+    /// * remove the original file and only keep the lock hardlink
     fn try_to_lock_file(path: &PathBuf) -> Result<(PathBuf, File), crate::UserLibError> {
-        // Ok write "/etc/passwd.12397" to file
-        // Ok write "/etc/passwd.lock" to lock
-        // Ok get the pid
-        // Ok open the file
-        // Ok write all to the tempfile
-        // Ok try to make a link from the file created to the lockfile
-        // Ok ensure that the file has been linked successfully
-        // Ok Open the lockfile
-        // Ok read the contents of the lockfile
-        // Ok check if the lockfile contains a pid if not error out
-        // Ok check if the containing pid is in a valid format. If not create a matching error
-        // test if this process could be killed. If so disclose the pid in the error.
-        // try to delete the lockfile as it is apparently not used by the process anmore. (cleanup)
-        // try to lock again now that the old logfile has been safely removed.
-        // remove the original file and only keep the lock hardlink
+        struct TempLockFile {
+            tlf: PathBuf,
+        }
+        impl Drop for TempLockFile {
+            fn drop(&mut self) {
+                info!("removing temporary lockfile {}", self.tlf.to_str().unwrap());
+                std::fs::remove_file(&self.tlf).unwrap();
+            }
+        }
+        impl Deref for TempLockFile {
+            type Target = PathBuf;
+            fn deref(&self) -> &PathBuf {
+                &self.tlf
+            }
+        }
 
         info!("locking file {}", path.to_string_lossy());
-        let mut tempfilepath = path.clone();
+        let mut tempfilepath_const = path.clone();
         // get the pid
         let pid = std::process::id();
         debug!("using pid {}", std::process::id());
         // get the filename
-        let filename = tempfilepath.file_name().unwrap().to_owned();
+        let filename = tempfilepath_const.file_name().unwrap().to_owned();
         // and the base path which is the base for tempfile and lockfile.
-        tempfilepath.pop();
-        let mut lockfilepath = tempfilepath.clone();
+        tempfilepath_const.pop();
+        let mut lockfilepath = tempfilepath_const.clone();
         // push the filenames to the paths
-        tempfilepath.push(format!("{}.{}", filename.to_str().unwrap(), pid));
+        tempfilepath_const.push(format!("{}.{}", filename.to_str().unwrap(), pid));
+        let tempfilepath = TempLockFile {
+            tlf: tempfilepath_const,
+        };
         lockfilepath.push(format!("{}.lock", filename.to_str().unwrap()));
         debug!(
             "Lockfile paths: {:?} (temporary) {:?} (final)",
-            tempfilepath, lockfilepath
+            *tempfilepath, lockfilepath
         );
         // write the pid into the tempfile
         {
-            let mut tempfile = File::create(&tempfilepath)
+            let mut tempfile = File::create(&*tempfilepath)
                 .expect(&format!("Failed to open {}", filename.to_str().unwrap()));
             match write!(tempfile, "{}", pid) {
                 Ok(_) => {}
-                Err(_) => {
-                    let _ = std::fs::remove_file(&tempfilepath);
-                    error!("could not write to {}", filename.to_string_lossy())
-                }
+                Err(_) => error!("could not write to {}", filename.to_string_lossy()),
             };
         }
 
         // try to make a hardlink from the lockfile to the tempfile
-        let linkresult = std::fs::hard_link(&tempfilepath, &lockfilepath);
+        let linkresult = std::fs::hard_link(&*tempfilepath, &lockfilepath);
         match linkresult {
             Ok(()) => {
                 debug!("successfully locked");
-                let _ = std::fs::remove_file(&tempfilepath);
 
                 // open the file
                 let resfile = File::open(&path);
@@ -142,7 +175,6 @@ impl LockedFileGuard {
                         let mut lf = match File::open(&lockfilepath) {
                             Ok(file) => file,
                             Err(e) => {
-                                let _ = std::fs::remove_file(&tempfilepath);
                                 panic!("failed to open the lockfile: {}", e);
                             }
                         };
@@ -150,7 +182,6 @@ impl LockedFileGuard {
                         match lf.read_to_string(&mut content) {
                             Ok(_) => {}
                             Err(_) => {
-                                let _ = std::fs::remove_file(&tempfilepath);
                                 panic!("failed to read the lockfile{}", e);
                             }
                         }
@@ -163,28 +194,23 @@ impl LockedFileGuard {
                                     pid
                                 );
                                 error!("The file could not be locked");
-                                let _ = std::fs::remove_file(&tempfilepath);
                                 todo!("Validate the lock and delete the file if the process does not exist anymore");
                                 /*let sent = nix::sys::signal::kill(
                                     nix::unistd::Pid::from_raw(pid as i32),
                                     nix::sys::signal::Signal::from(0),
                                 );*/
                             }
-                            Err(e) => {
-                                let _ = std::fs::remove_file(&tempfilepath);
-                                error!(
-                                    "existing lock file {} with an invalid PID '{}' Error: {}",
-                                    lockfilepath.to_str().unwrap(),
-                                    content,
-                                    e
-                                )
-                            }
+                            Err(e) => error!(
+                                "existing lock file {} with an invalid PID '{}' Error: {}",
+                                lockfilepath.to_str().unwrap(),
+                                content,
+                                e
+                            ),
                         }
                     }
                 }
 
                 _ => {
-                    let _ = std::fs::remove_file(&tempfilepath);
                     panic!("failed to lock the file: {}", e);
                 }
             },
@@ -229,16 +255,13 @@ impl UserDBLocal {
     pub fn load_files(files: Files) -> Self {
         // Get the Strings for the files use an inner block to drop references after read.
         let (my_passwd_lines, my_shadow_lines, my_group_lines) = {
-            let locked_p = files.lock_and_get_passwd();
-            let locked_s = files.lock_and_get_shadow();
-            let locked_g = files.lock_and_get_group();
-            use std::{thread, time};
-
-            let ten_millis = time::Duration::from_millis(10000);
-            thread::sleep(ten_millis);
-            let p = file_to_string(&locked_p.unwrap().file);
-            let s = file_to_string(&locked_s.unwrap().file);
-            let g = file_to_string(&locked_g.unwrap().file);
+            let opened = files.lock_all_get();
+            let (locked_p, locked_s, locked_g) = opened.expect("failed to lock files!");
+            // read the files to strings
+            let p = file_to_string(&locked_p.file);
+            let s = file_to_string(&locked_s.file);
+            let g = file_to_string(&locked_g.file);
+            // return the strings to the outer scope and release the lock...
             (p, s, g)
         };
 
