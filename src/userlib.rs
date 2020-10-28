@@ -9,7 +9,7 @@
 
 use crate::api::GroupRead;
 use crate::api::UserRead;
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::Deref;
@@ -18,14 +18,15 @@ use std::{collections::HashMap, io::Write};
 
 pub struct UserDBLocal {
     source_files: Files,
+    source_hashes: Hashes, // to detect changes
     pub users: HashMap<String, crate::User>,
     pub groups: Vec<crate::Group>,
 }
 
 pub struct Files {
-    passwd: Option<PathBuf>,
-    shadow: Option<PathBuf>,
-    group: Option<PathBuf>,
+    pub passwd: Option<PathBuf>,
+    pub shadow: Option<PathBuf>,
+    pub group: Option<PathBuf>,
 }
 
 impl Default for Files {
@@ -62,6 +63,7 @@ impl Files {
 
 pub struct LockedFileGuard {
     lockfile: PathBuf,
+    path: PathBuf,
     pub(crate) file: File,
 }
 
@@ -69,9 +71,24 @@ impl LockedFileGuard {
     pub fn new(path: &PathBuf) -> Result<Self, crate::userlib_error::UserLibError> {
         let locked = Self::try_to_lock_file(path);
         match locked {
-            Ok((lockfile, file)) => Ok(Self { lockfile, file }),
+            Ok((lockfile, file)) => Ok(Self {
+                lockfile,
+                path: path.to_owned(),
+                file,
+            }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn replace_contents(
+        &mut self,
+        new_content: String,
+    ) -> Result<(), crate::userlib_error::UserLibError> {
+        self.file = File::create(&self.path).expect("Failed to truncate file.");
+        self.file
+            .write_all(&new_content.into_bytes())
+            .expect("Failed to write all users.");
+        Ok(())
     }
 
     /// This function tries to lock a file in the way other passwd locking mechanisms work.
@@ -246,6 +263,7 @@ impl UserDBLocal {
             },
             users,
             groups,
+            source_hashes: Hashes::new(&passwd_content, &shadow_content, &group_content),
         };
         res
     }
@@ -272,17 +290,40 @@ impl UserDBLocal {
             source_files: files,
             users,
             groups: string_to(&my_group_lines),
+            source_hashes: Hashes::new(&my_passwd_lines, &my_shadow_lines, &my_group_lines),
         }
     }
 }
 
 use crate::api::UserDBWrite;
 impl UserDBWrite for UserDBLocal {
-    fn delete_user(&mut self, user: &str) -> Result<crate::User, crate::UserLibError> {
-        let res = self.users.remove(user);
-        match res {
-            Some(user) => Ok(user),
-            None => Err(format!("Failed to delete the user {}", user).into()),
+    fn delete_user(&mut self, username: &str) -> Result<crate::User, crate::UserLibError> {
+        let opened = self.source_files.lock_all_get();
+        let (mut locked_p, locked_s, locked_g) = opened.expect("failed to lock files!");
+        // read the files to strings
+        let p = file_to_string(&locked_p.file);
+        let _s = file_to_string(&locked_s.file);
+        let _g = file_to_string(&locked_g.file);
+        {
+            let user_opt = self.users.get(username);
+            let user = match user_opt {
+                Some(user) => user,
+                None => {
+                    return Err(crate::UserLibError::NotFound);
+                }
+            };
+            if self.source_hashes.passwd.has_changed(&p) {
+                error!("The source file has changed. Deleting the user could corrupt the userdatabase. Aborting!");
+            } else {
+                // create the new content of passwd
+                let modified = user.remove_in(&p);
+                // write the new content to the file.
+                locked_p
+                    .replace_contents(modified)
+                    .expect("Error during write to the database. Please doublecheck as the userdatabase could be corrupted");
+                return Ok(user.clone());
+            }
+            Err(format!("The user has been changed {}", username).into())
         }
     }
 
@@ -412,12 +453,39 @@ impl UserDBValidation for UserDBLocal {
     }
 }
 
-fn get_nth_line(path: &File, n: u32) -> String {
-    let lines = file_to_string(path);
-    let line = lines.lines().nth(n as usize);
-    match line {
-        Some(line) => line.to_owned(),
-        None => "".to_owned(),
+pub struct SourceHash {
+    hashvalue: String,
+}
+
+impl SourceHash {
+    pub fn new(src: &str) -> Self {
+        Self {
+            hashvalue: src.to_owned(),
+        }
+    }
+    pub fn has_changed(&self, new: &str) -> bool {
+        trace!(
+            "Old and new lengths: {}, {}",
+            self.hashvalue.len(),
+            new.len()
+        );
+        !self.hashvalue.eq(new)
+    }
+}
+
+pub struct Hashes {
+    pub passwd: SourceHash,
+    pub shadow: SourceHash,
+    pub group: SourceHash,
+}
+
+impl Hashes {
+    pub fn new(passwd: &str, shadow: &str, group: &str) -> Self {
+        Self {
+            passwd: SourceHash::new(passwd),
+            shadow: SourceHash::new(shadow),
+            group: SourceHash::new(group),
+        }
     }
 }
 
