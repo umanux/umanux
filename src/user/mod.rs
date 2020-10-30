@@ -243,10 +243,7 @@ fn test_default_user() {
 fn test_new_from_string() {
     // Test if a single line can be parsed and if the resulting struct is populated correctly.
     let fail = User::new_from_string("".into(), 0).err().unwrap();
-    assert_eq!(
-        fail,
-        crate::UserLibError::Message("Failed to parse: not enough elements".into())
-    );
+    assert_eq!(fail, "Failed to parse: not enough elements".into());
     let pwd = User::new_from_string(
         "testuser:testpassword:1001:1001:testcomment:/home/test:/bin/test".into(),
         0,

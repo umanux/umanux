@@ -17,7 +17,28 @@ pub enum UserLibError {
     NotFound,
     ParseError,
     FilesChanged,
-    Message(String),
+    Message(MyMessage),
+}
+
+#[derive(Debug)]
+pub enum MyMessage {
+    Simple(String),
+    IOError(String, std::io::Error),
+}
+
+impl PartialEq for MyMessage {
+    fn eq(&self, other: &Self) -> bool {
+        format!("{}", self).eq(&format!("{}", other))
+    }
+}
+
+impl Display for MyMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MyMessage::Simple(m) => write!(f, "{}", m),
+            MyMessage::IOError(m, e) => write!(f, "{},{}", m, e),
+        }
+    }
 }
 
 impl Display for UserLibError {
@@ -35,19 +56,35 @@ impl Display for UserLibError {
 }
 
 impl Error for UserLibError {
-    fn description(&self) -> &str {
-        todo!()
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match *self {
+            UserLibError::NotFound | UserLibError::ParseError | UserLibError::FilesChanged => None,
+            UserLibError::Message(MyMessage::IOError(_, ref e)) => Some(e),
+            UserLibError::Message(MyMessage::Simple(_)) => None,
+        }
     }
 }
 
 impl From<&str> for UserLibError {
     fn from(err: &str) -> Self {
-        Self::Message(err.to_owned())
+        Self::Message(MyMessage::Simple(err.to_owned()))
     }
 }
 
 impl From<String> for UserLibError {
     fn from(err: String) -> Self {
-        Self::Message(err)
+        Self::Message(MyMessage::Simple(err))
     }
 }
+
+impl From<(String, std::io::Error)> for UserLibError {
+    fn from((m, e): (String, std::io::Error)) -> Self {
+        UserLibError::Message(MyMessage::IOError(m, e))
+    }
+}
+/*
+impl From<(String, Error)> for UserLibError {
+    fn from((m, e): (String, Error)) -> Self {
+        UserLibError::Message(MyMessage::IOError(m, e))
+    }
+}*/

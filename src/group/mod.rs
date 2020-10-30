@@ -35,10 +35,7 @@ impl TryFrom<String> for Groupname {
             warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
             Ok(Self { groupname: source })
         } else {
-            Err(UserLibError::Message(format!(
-                "Invalid groupname -{}-",
-                source
-            )))
+            Err(format!("Invalid groupname -{}-", source).into())
         }
     }
 }
@@ -128,11 +125,12 @@ impl NewFromString for Group {
                 members: parse_members_list(elements.get(3).unwrap()),
             })
         } else {
-            Err(UserLibError::Message(format!(
+            Err(format!(
                 "Failed to parse: not enough elements ({}): {:?}",
                 elements.len(),
                 elements
-            )))
+            )
+            .into())
         }
     }
 }

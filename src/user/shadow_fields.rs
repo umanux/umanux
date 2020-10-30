@@ -117,11 +117,12 @@ impl NewFromString for Shadow {
                 },
             })
         } else {
-            Err(UserLibError::Message(format!(
+            Err(format!(
                 "Failed to parse: not enough elements ({}): {:?}",
                 elements.len(),
                 elements
-            )))
+            )
+            .into())
         }
     }
 }

@@ -18,7 +18,7 @@ fn main() {
         group: Some(PathBuf::from("./group")),
     };
 
-    let mut db = adduser::UserDBLocal::load_files(mf);
+    let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
 
     let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user("teste");
     match user_res {

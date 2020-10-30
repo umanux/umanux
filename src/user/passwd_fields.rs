@@ -41,10 +41,7 @@ impl TryFrom<String> for Username {
             warn!("username {} is not a valid username. This might cause problems. (It is default in Debian and Ubuntu)", source);
             Ok(Self { username: source })
         } else {
-            Err(UserLibError::Message(format!(
-                "Invalid username {}",
-                source
-            )))
+            Err(format!("Invalid username {}", source).into())
         }
     }
 }
@@ -201,25 +198,14 @@ impl TryFrom<String> for ShellPath {
 fn test_username_validation() {
     // Failing tests
     let umlauts: Result<Username, UserLibError> = Username::try_from("täst".to_owned()); // umlauts
-    assert_eq!(
-        Err(UserLibError::Message("Invalid username täst".into())),
-        umlauts
-    );
+    assert_eq!(Err("Invalid username täst".into()), umlauts);
     let number_first = Username::try_from("11elf".to_owned()); // numbers first
-    assert_eq!(
-        Err(UserLibError::Message("Invalid username 11elf".into())),
-        number_first
-    );
+    assert_eq!(Err("Invalid username 11elf".into()), number_first);
     let slashes = Username::try_from("test/name".to_owned()); // slashes in the name
-    assert_eq!(
-        Err(UserLibError::Message("Invalid username test/name".into())),
-        slashes
-    );
+    assert_eq!(Err("Invalid username test/name".into()), slashes);
     let long = Username::try_from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned()); // maximum size 32 letters
     assert_eq!(
-        Err(UserLibError::Message(
-            "Invalid username aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned()
-        )),
+        Err("Invalid username aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into()),
         long
     );
     // Working tests

@@ -9,7 +9,7 @@ fn main() {
     .unwrap();
     use adduser::api::UserDBRead;
 
-    let db = adduser::UserDBLocal::load_files(adduser::Files::default());
+    let db = adduser::UserDBLocal::load_files(adduser::Files::default()).unwrap();
 
     for u in db.get_all_users() {
         println!("{}", u);
