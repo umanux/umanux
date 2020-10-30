@@ -85,6 +85,7 @@ impl LockedFileGuard {
         self.file
             .write_all(&new_content.into_bytes())
             .expect("Failed to write all users.");
+        let _ = self.file.write("\n".as_bytes());
         Ok(())
     }
 

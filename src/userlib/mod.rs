@@ -116,6 +116,25 @@ impl UserDBWrite for UserDBLocal {
                     let ncont = locked_p.replace_contents(modified_p);
                     match ncont {
                         Ok(_) => {
+                            let shad = user.get_shadow();
+                            match shad {
+                                Some(shadow) => {
+                                    let modified_s = shadow.remove_in(&s);
+                                    let ncont = locked_s.replace_contents(modified_s);
+                                    match ncont {
+                                        Ok(_) => (),
+                                        Err(e) => {
+                                            return Err(format!(
+                                                "Error during write to the database. \
+                                        Please doublecheck as the shadowdatabase could be corrupted: {}",
+                                                e,
+                                            )
+                                            .into());
+                                        }
+                                    }
+                                }
+                                None => (),
+                            }
                             // Remove the user from the memory database(HashMap)
                             let res = self.users.remove(username);
                             return Ok(
