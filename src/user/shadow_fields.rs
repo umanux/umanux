@@ -40,6 +40,13 @@ impl Shadow {
     pub fn get_password(&self) -> &str {
         &self.password.password
     }
+    pub fn remove_in(&self, content: &str) -> String {
+        content
+            .split(&self.source)
+            .map(|x| x.trim())
+            .collect::<Vec<&str>>()
+            .join("\n")
+    }
 }
 
 impl Display for Shadow {

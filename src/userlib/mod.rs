@@ -98,33 +98,41 @@ impl UserDBWrite for UserDBLocal {
             }
         } else {
             let opened = self.source_files.lock_all_get();
-            let (mut locked_p, locked_s, locked_g) = opened.expect("failed to lock files!");
+            let (mut locked_p, mut locked_s, locked_g) = opened.expect("failed to lock files!");
 
             // read the files to strings
             let p = file_to_string(&locked_p.file)?;
-            let _s = file_to_string(&locked_s.file)?;
+            let s = file_to_string(&locked_s.file)?;
             let _g = file_to_string(&locked_g.file)?;
             {
-                if self.source_hashes.passwd.has_changed(&p) {
+                let src = &self.source_hashes;
+                if src.passwd.has_changed(&p) | src.shadow.has_changed(&s) {
                     error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
                 } else {
                     // create the new content of passwd
-                    let modified = user.remove_in(&p);
+                    let modified_p = user.remove_in(&p);
+
                     // write the new content to the file.
-                    let ncont = locked_p.replace_contents(modified);
+                    let ncont = locked_p.replace_contents(modified_p);
                     match ncont {
                         Ok(_) => {
+                            // Remove the user from the memory database(HashMap)
                             let res = self.users.remove(username);
-                            return Ok(res.unwrap());
+                            return Ok(
+                                res.expect("Failed to remove the user from the internal HashMap")
+                            );
                         }
-                        Err(_) => {
-                            return Err("Error during write to the database. \
-                        Please doublecheck as the userdatabase could be corrupted: {}"
-                                .into());
+                        Err(e) => {
+                            return Err(format!(
+                                "Error during write to the database. \
+                        Please doublecheck as the userdatabase could be corrupted: {}",
+                                e,
+                            )
+                            .into());
                         }
                     }
                 }
-                Err(format!("The user has been changed {}", username).into())
+                Err(format!("The userdatabase has been changed {}", username).into())
             }
         }
     }

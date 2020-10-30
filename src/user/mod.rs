@@ -24,6 +24,13 @@ pub struct User {
 }
 
 impl User {
+    pub fn get_shadow(&self) -> Option<&crate::Shadow> {
+        match self.password {
+            crate::Password::Encrypted(_) => None,
+            crate::Password::Shadow(ref s) => Some(s),
+            crate::Password::Disabled => None,
+        }
+    }
     /*fn get_nth_line(content: &str, n: u32) -> (String, u64) {
         use std::io::BufRead;
         let mut cursor = std::io::Cursor::new(content);
