@@ -41,14 +41,30 @@ impl Default for Files {
 }
 
 impl Files {
+    /// Check if all the files are defined. Because some operations require the files to be present
+    pub fn is_virtual(&self) -> bool {
+        !(self.group.is_some() & self.passwd.is_some() & self.shadow.is_some())
+    }
     pub fn lock_and_get_passwd(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        LockedFileGuard::new(self.passwd.as_ref().unwrap())
+        let path = self.passwd.as_ref();
+        match path {
+            Some(p) => LockedFileGuard::new(p),
+            None => Err(crate::UserLibError::FilesRequired),
+        }
     }
     pub fn lock_and_get_shadow(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        LockedFileGuard::new(self.shadow.as_ref().unwrap())
+        let path = self.shadow.as_ref();
+        match path {
+            Some(p) => LockedFileGuard::new(p),
+            None => Err(crate::UserLibError::FilesRequired),
+        }
     }
     pub fn lock_and_get_group(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        LockedFileGuard::new(self.group.as_ref().unwrap())
+        let path = self.group.as_ref();
+        match path {
+            Some(p) => LockedFileGuard::new(p),
+            None => Err(crate::UserLibError::FilesRequired),
+        }
     }
 
     pub fn lock_all_get(
@@ -68,7 +84,7 @@ pub struct LockedFileGuard {
 }
 
 impl LockedFileGuard {
-    pub fn new(path: &PathBuf) -> Result<Self, crate::userlib_error::UserLibError> {
+    pub fn new(path: &PathBuf) -> Result<Self, crate::UserLibError> {
         let locked = Self::try_to_lock_file(path);
         match locked {
             Ok((lockfile, file)) => Ok(Self {
@@ -80,10 +96,7 @@ impl LockedFileGuard {
         }
     }
 
-    pub fn replace_contents(
-        &mut self,
-        new_content: String,
-    ) -> Result<(), crate::userlib_error::UserLibError> {
+    pub fn replace_contents(&mut self, new_content: String) -> Result<(), crate::UserLibError> {
         self.file = File::create(&self.path).expect("Failed to truncate file.");
         self.file
             .write_all(&new_content.into_bytes())
@@ -298,9 +311,6 @@ impl UserDBLocal {
 use crate::api::UserDBWrite;
 impl UserDBWrite for UserDBLocal {
     fn delete_user(&mut self, username: &str) -> Result<crate::User, crate::UserLibError> {
-        let opened = self.source_files.lock_all_get();
-        let (mut locked_p, locked_s, locked_g) = opened.expect("failed to lock files!");
-
         // try to get the user from the database
         let user_opt = self.users.get(username);
         let user = match user_opt {
@@ -310,30 +320,43 @@ impl UserDBWrite for UserDBLocal {
             }
         };
 
-        // read the files to strings
-        let p = file_to_string(&locked_p.file)?;
-        let _s = file_to_string(&locked_s.file)?;
-        let _g = file_to_string(&locked_g.file)?;
-        {
-            if self.source_hashes.passwd.has_changed(&p) {
-                error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
-            } else {
-                // create the new content of passwd
-                let modified = user.remove_in(&p);
-                // write the new content to the file.
-                let ncont = locked_p.replace_contents(modified);
-                match ncont {
-                    Ok(_) => {
-                        return Ok(user.clone());
-                    }
-                    Err(_) => {
-                        return Err("Error during write to the database. \
+        if self.source_files.is_virtual() {
+            warn!("There are no associated files working in dummy mode!");
+            let res = self.users.remove(username);
+            match res {
+                Some(u) => Ok(u),
+                None => Err(crate::UserLibError::NotFound),
+            }
+        } else {
+            let opened = self.source_files.lock_all_get();
+            let (mut locked_p, locked_s, locked_g) = opened.expect("failed to lock files!");
+
+            // read the files to strings
+            let p = file_to_string(&locked_p.file)?;
+            let _s = file_to_string(&locked_s.file)?;
+            let _g = file_to_string(&locked_g.file)?;
+            {
+                if self.source_hashes.passwd.has_changed(&p) {
+                    error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
+                } else {
+                    // create the new content of passwd
+                    let modified = user.remove_in(&p);
+                    // write the new content to the file.
+                    let ncont = locked_p.replace_contents(modified);
+                    match ncont {
+                        Ok(_) => {
+                            let res = self.users.remove(username);
+                            return Ok(res.unwrap());
+                        }
+                        Err(_) => {
+                            return Err("Error during write to the database. \
                         Please doublecheck as the userdatabase could be corrupted: {}"
-                            .into());
+                                .into());
+                        }
                     }
                 }
+                Err(format!("The user has been changed {}", username).into())
             }
-            Err(format!("The user has been changed {}", username).into())
         }
     }
 
@@ -417,7 +440,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {
         for group in self.groups.iter() {
-            if group.get_groupname().unwrap() == name {
+            if group.get_groupname()? == name {
                 return Some(group);
             }
         }
@@ -426,7 +449,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_id(&self, id: u32) -> Option<&crate::Group> {
         for group in self.groups.iter() {
-            if group.get_gid().unwrap() == id {
+            if group.get_gid()? == id {
                 return Some(group);
             }
         }
@@ -618,7 +641,6 @@ fn test_user_db_read_implementation() {
 
 #[test]
 fn test_user_db_write_implementation() {
-    /* only works on files now
     let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
     let user = "test";
 
@@ -626,5 +648,4 @@ fn test_user_db_write_implementation() {
     assert!(data.delete_user(&user).is_ok());
     assert!(data.delete_user(&user).is_err());
     assert_eq!(data.get_all_users().len(), 0);
-    */
 }

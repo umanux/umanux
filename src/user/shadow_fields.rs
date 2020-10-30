@@ -10,7 +10,7 @@
 use crate::userlib::NewFromString;
 use log::warn;
 
-use crate::userlib_error::UserLibError;
+use crate::UserLibError;
 use std::cmp::Eq;
 use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display};

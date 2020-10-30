@@ -17,6 +17,7 @@ pub enum UserLibError {
     NotFound,
     ParseError,
     FilesChanged,
+    FilesRequired,
     Message(MyMessage),
 }
 
@@ -46,6 +47,10 @@ impl Display for UserLibError {
         match self {
             Self::NotFound => write!(f, "not found"),
             Self::ParseError => write!(f, "failed to parse"),
+            UserLibError::FilesRequired => write!(
+                f,
+                "File locking is only possible if some files are specified"
+            ),
             Self::FilesChanged => write!(
                 f,
                 "The files changed. Updating could lead to conflict aborting."
@@ -58,7 +63,10 @@ impl Display for UserLibError {
 impl Error for UserLibError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
-            UserLibError::NotFound | UserLibError::ParseError | UserLibError::FilesChanged => None,
+            UserLibError::NotFound
+            | UserLibError::ParseError
+            | UserLibError::FilesChanged
+            | UserLibError::FilesRequired => None,
             UserLibError::Message(MyMessage::IOError(_, ref e)) => Some(e),
             UserLibError::Message(MyMessage::Simple(_)) => None,
         }
