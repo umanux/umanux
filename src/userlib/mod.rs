@@ -7,253 +7,21 @@
 )]
 #![allow(clippy::non_ascii_literal)]
 
+pub mod files;
+
 use crate::api::GroupRead;
 use crate::api::UserRead;
+#[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::{collections::HashMap, io::Write};
 
 pub struct UserDBLocal {
-    source_files: Files,
+    source_files: files::Files,
     source_hashes: Hashes, // to detect changes
     pub users: HashMap<String, crate::User>,
     pub groups: Vec<crate::Group>,
-}
-
-pub struct Files {
-    pub passwd: Option<PathBuf>,
-    pub shadow: Option<PathBuf>,
-    pub group: Option<PathBuf>,
-}
-
-impl Default for Files {
-    /// use the default Linux `/etc/` paths
-    fn default() -> Self {
-        Self {
-            passwd: Some(PathBuf::from("/etc/passwd")),
-            shadow: Some(PathBuf::from("/etc/shadow")),
-            group: Some(PathBuf::from("/etc/group")),
-        }
-    }
-}
-
-impl Files {
-    /// Check if all the files are defined. Because some operations require the files to be present
-    pub fn is_virtual(&self) -> bool {
-        !(self.group.is_some() & self.passwd.is_some() & self.shadow.is_some())
-    }
-    pub fn lock_and_get_passwd(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        let path = self.passwd.as_ref();
-        match path {
-            Some(p) => LockedFileGuard::new(p),
-            None => Err(crate::UserLibError::FilesRequired),
-        }
-    }
-    pub fn lock_and_get_shadow(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        let path = self.shadow.as_ref();
-        match path {
-            Some(p) => LockedFileGuard::new(p),
-            None => Err(crate::UserLibError::FilesRequired),
-        }
-    }
-    pub fn lock_and_get_group(&self) -> Result<LockedFileGuard, crate::UserLibError> {
-        let path = self.group.as_ref();
-        match path {
-            Some(p) => LockedFileGuard::new(p),
-            None => Err(crate::UserLibError::FilesRequired),
-        }
-    }
-
-    pub fn lock_all_get(
-        &self,
-    ) -> Result<(LockedFileGuard, LockedFileGuard, LockedFileGuard), crate::UserLibError> {
-        let pwd = self.lock_and_get_passwd()?;
-        let shd = self.lock_and_get_shadow()?;
-        let grp = self.lock_and_get_group()?;
-        Ok((pwd, shd, grp))
-    }
-}
-
-pub struct LockedFileGuard {
-    lockfile: PathBuf,
-    path: PathBuf,
-    pub(crate) file: File,
-}
-
-impl LockedFileGuard {
-    pub fn new(path: &PathBuf) -> Result<Self, crate::UserLibError> {
-        let locked = Self::try_to_lock_file(path);
-        match locked {
-            Ok((lockfile, file)) => Ok(Self {
-                lockfile,
-                path: path.to_owned(),
-                file,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn replace_contents(&mut self, new_content: String) -> Result<(), crate::UserLibError> {
-        self.file = File::create(&self.path).expect("Failed to truncate file.");
-        self.file
-            .write_all(&new_content.into_bytes())
-            .expect("Failed to write all users.");
-        Ok(())
-    }
-
-    /// This function tries to lock a file in the way other passwd locking mechanisms work.
-    ///
-    /// * get the pid
-    /// * create the temporary lockfilepath "/etc/passwd.12397"
-    /// * create the lockfilepath "/etc/passwd.lock"
-    /// * open the temporary file
-    /// * write the pid to the tempfile
-    /// * try to make a link from the temporary file created to the lockfile
-    /// * ensure that the file has been linked successfully
-    ///
-    /// when the link could not be created:
-    ///
-    /// * Open the lockfile
-    /// * read the contents of the lockfile
-    /// * check if the lockfile contains a pid if not error out
-    /// * check if the containing pid is in a valid format. If not create a matching error
-    ///
-    /// not implemented yet:
-    ///
-    /// * test if this process could be killed. If so disclose the pid in the error.
-    /// * try to delete the lockfile as it is apparently not used by the process anmore. (cleanup)
-    /// * try to lock again now that the old logfile has been safely removed.
-    /// * remove the original file and only keep the lock hardlink
-    fn try_to_lock_file(path: &PathBuf) -> Result<(PathBuf, File), crate::UserLibError> {
-        struct TempLockFile {
-            tlf: PathBuf,
-        }
-        impl Drop for TempLockFile {
-            fn drop(&mut self) {
-                info!("removing temporary lockfile {}", self.tlf.to_str().unwrap());
-                std::fs::remove_file(&self.tlf).unwrap();
-            }
-        }
-        impl Deref for TempLockFile {
-            type Target = PathBuf;
-            fn deref(&self) -> &PathBuf {
-                &self.tlf
-            }
-        }
-
-        info!("locking file {}", path.to_string_lossy());
-        let mut tempfilepath_const = path.clone();
-        // get the pid
-        let pid = std::process::id();
-        debug!("using pid {}", std::process::id());
-        // get the filename
-        let filename = tempfilepath_const.file_name().unwrap().to_owned();
-        // and the base path which is the base for tempfile and lockfile.
-        tempfilepath_const.pop();
-        let mut lockfilepath = tempfilepath_const.clone();
-        // push the filenames to the paths
-        tempfilepath_const.push(format!("{}.{}", filename.to_str().unwrap(), pid));
-        let tempfilepath = TempLockFile {
-            tlf: tempfilepath_const,
-        };
-        lockfilepath.push(format!("{}.lock", filename.to_str().unwrap()));
-        debug!(
-            "Lockfile paths: {:?} (temporary) {:?} (final)",
-            *tempfilepath, lockfilepath
-        );
-        // write the pid into the tempfile
-        {
-            let mut tempfile = File::create(&*tempfilepath)
-                .expect(&format!("Failed to open {}", filename.to_str().unwrap()));
-            match write!(tempfile, "{}", pid) {
-                Ok(_) => {}
-                Err(_) => error!("could not write to {}", filename.to_string_lossy()),
-            };
-        }
-
-        // try to make a hardlink from the lockfile to the tempfile
-        let linkresult = std::fs::hard_link(&*tempfilepath, &lockfilepath);
-        match linkresult {
-            Ok(()) => {
-                debug!("successfully locked");
-
-                // open the file
-                let resfile = File::open(&path);
-                return match resfile {
-                    Ok(file) => Ok((lockfilepath, file)),
-                    Err(e) => {
-                        // failed to open the file undo the locks
-                        let _ = std::fs::remove_file(&lockfilepath);
-                        let ret: crate::UserLibError = format!(
-                            "Failed to open the file: {}, error: {}",
-                            path.to_str().unwrap(),
-                            e
-                        )
-                        .into();
-                        Err(ret)
-                    }
-                };
-            }
-            Err(e) => match e.kind() {
-                // analyze the error further
-                std::io::ErrorKind::AlreadyExists => {
-                    warn!("The file is already locked by another process! – testing the validity of the lock");
-                    {
-                        let mut lf = match File::open(&lockfilepath) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                panic!("failed to open the lockfile: {}", e);
-                            }
-                        };
-                        let mut content = String::new();
-                        match lf.read_to_string(&mut content) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                panic!("failed to read the lockfile{}", e);
-                            }
-                        }
-                        let content = content.trim().trim_matches(char::from(0));
-                        let lock_pid = content.parse::<u32>();
-                        match lock_pid {
-                            Ok(pid) => {
-                                warn!(
-                                    "found a pid: {}, checking if this process is still running",
-                                    pid
-                                );
-                                error!("The file could not be locked");
-                                todo!("Validate the lock and delete the file if the process does not exist anymore");
-                                /*let sent = nix::sys::signal::kill(
-                                    nix::unistd::Pid::from_raw(pid as i32),
-                                    nix::sys::signal::Signal::from(0),
-                                );*/
-                            }
-                            Err(e) => error!(
-                                "existing lock file {} with an invalid PID '{}' Error: {}",
-                                lockfilepath.to_str().unwrap(),
-                                content,
-                                e
-                            ),
-                        }
-                    }
-                }
-
-                _ => {
-                    panic!("failed to lock the file: {}", e);
-                }
-            },
-        }
-        Err("was not able to lock!".into())
-    }
-}
-
-impl Drop for LockedFileGuard {
-    fn drop(&mut self) {
-        info!("removing lock");
-        std::fs::remove_file(&self.lockfile).unwrap();
-    }
 }
 
 impl UserDBLocal {
@@ -269,7 +37,7 @@ impl UserDBLocal {
         let groups = string_to(&group_content);
         shadow_to_users(&mut users, shadow_entries);
         let res = Self {
-            source_files: Files {
+            source_files: files::Files {
                 passwd: None,
                 group: None,
                 shadow: None,
@@ -283,7 +51,7 @@ impl UserDBLocal {
 
     /// Import the database from a [`Files`] struct
     #[must_use]
-    pub fn load_files(files: Files) -> Result<Self, crate::UserLibError> {
+    pub fn load_files(files: files::Files) -> Result<Self, crate::UserLibError> {
         // Get the Strings for the files use an inner block to drop references after read.
         let (my_passwd_lines, my_shadow_lines, my_group_lines) = {
             let opened = files.lock_all_get();
@@ -601,6 +369,7 @@ fn test_creator_user_db_local() {
 
 #[test]
 fn test_parsing_local_database() {
+    use std::path::PathBuf;
     // Parse the worldreadable user database ignore the shadow database as this would require root privileges.
     let pwdfile = File::open(PathBuf::from("/etc/passwd")).unwrap();
     let grpfile = File::open(PathBuf::from("/etc/group")).unwrap();
@@ -612,6 +381,7 @@ fn test_parsing_local_database() {
 
 #[test]
 fn test_user_db_read_implementation() {
+    use std::path::PathBuf;
     let pwdfile = File::open(PathBuf::from("/etc/passwd")).unwrap();
     let grpfile = File::open(PathBuf::from("/etc/group")).unwrap();
     let pass = file_to_string(&pwdfile).unwrap();
