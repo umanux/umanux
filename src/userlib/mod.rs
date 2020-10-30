@@ -8,6 +8,7 @@
 #![allow(clippy::non_ascii_literal)]
 
 pub mod files;
+pub mod hashes;
 
 use crate::api::GroupRead;
 use crate::api::UserRead;
@@ -19,7 +20,7 @@ use std::io::{BufReader, Read};
 
 pub struct UserDBLocal {
     source_files: files::Files,
-    source_hashes: Hashes, // to detect changes
+    source_hashes: hashes::Hashes, // to detect changes
     pub users: HashMap<String, crate::User>,
     pub groups: Vec<crate::Group>,
 }
@@ -44,7 +45,7 @@ impl UserDBLocal {
             },
             users,
             groups,
-            source_hashes: Hashes::new(&passwd_content, &shadow_content, &group_content),
+            source_hashes: hashes::Hashes::new(&passwd_content, &shadow_content, &group_content),
         };
         res
     }
@@ -71,7 +72,7 @@ impl UserDBLocal {
             source_files: files,
             users,
             groups: string_to(&my_group_lines),
-            source_hashes: Hashes::new(&my_passwd_lines, &my_shadow_lines, &my_group_lines),
+            source_hashes: hashes::Hashes::new(&my_passwd_lines, &my_shadow_lines, &my_group_lines),
         })
     }
 }
@@ -251,42 +252,6 @@ impl UserDBValidation for UserDBLocal {
             .iter()
             .all(|x| x.get_groupname().unwrap() != name);
         valid && free
-    }
-}
-
-pub struct SourceHash {
-    hashvalue: String,
-}
-
-impl SourceHash {
-    pub fn new(src: &str) -> Self {
-        Self {
-            hashvalue: src.to_owned(),
-        }
-    }
-    pub fn has_changed(&self, new: &str) -> bool {
-        trace!(
-            "Old and new lengths: {}, {}",
-            self.hashvalue.len(),
-            new.len()
-        );
-        !self.hashvalue.eq(new)
-    }
-}
-
-pub struct Hashes {
-    pub passwd: SourceHash,
-    pub shadow: SourceHash,
-    pub group: SourceHash,
-}
-
-impl Hashes {
-    pub fn new(passwd: &str, shadow: &str, group: &str) -> Self {
-        Self {
-            passwd: SourceHash::new(passwd),
-            shadow: SourceHash::new(shadow),
-            group: SourceHash::new(group),
-        }
     }
 }
 
