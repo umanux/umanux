@@ -10,8 +10,8 @@
 pub mod files;
 pub mod hashes;
 
-use crate::api::GroupRead;
 use crate::api::UserRead;
+use crate::{api::GroupRead, UserLibError};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
@@ -75,17 +75,55 @@ impl UserDBLocal {
             source_hashes: hashes::Hashes::new(&my_passwd_lines, &my_shadow_lines, &my_group_lines),
         })
     }
+    fn delete_from_passwd(
+        user: &crate::User,
+        passwd_file_content: String,
+        locked_p: &mut files::LockedFileGuard,
+    ) -> Result<(), UserLibError> {
+        let modified_p = user.remove_in(&passwd_file_content);
+
+        // write the new content to the file.
+        let ncont = locked_p.replace_contents(modified_p);
+        match ncont {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("Failed to write the passwd database: {}", e).into()),
+        }
+    }
+
+    fn delete_from_shadow(
+        user: &crate::User,
+        shadow_file_content: String,
+        locked_s: &mut files::LockedFileGuard,
+    ) -> Result<(), UserLibError> {
+        let shad = user.get_shadow();
+        match shad {
+            Some(shadow) => {
+                let modified_s = shadow.remove_in(&shadow_file_content);
+                let ncont = locked_s.replace_contents(modified_s);
+                match ncont {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(format!(
+                        "Error during write to the database. \
+                    Please doublecheck as the shadowdatabase could be corrupted: {}",
+                        e,
+                    )
+                    .into()),
+                }
+            }
+            None => Ok(()),
+        }
+    }
 }
 
 use crate::api::UserDBWrite;
 impl UserDBWrite for UserDBLocal {
-    fn delete_user(&mut self, username: &str) -> Result<crate::User, crate::UserLibError> {
+    fn delete_user(&mut self, username: &str) -> Result<crate::User, UserLibError> {
         // try to get the user from the database
-        let user_opt = self.users.get(username);
+        let user_opt = self.get_user_by_name(username);
         let user = match user_opt {
             Some(user) => user,
             None => {
-                return Err(crate::UserLibError::NotFound);
+                return Err(UserLibError::NotFound);
             }
         };
 
@@ -94,64 +132,32 @@ impl UserDBWrite for UserDBLocal {
             let res = self.users.remove(username);
             match res {
                 Some(u) => Ok(u),
-                None => Err(crate::UserLibError::NotFound),
+                None => Err(UserLibError::NotFound), // should not happen anymore as existence is checked.
             }
         } else {
             let opened = self.source_files.lock_all_get();
             let (mut locked_p, mut locked_s, locked_g) = opened.expect("failed to lock files!");
 
             // read the files to strings
-            let p = file_to_string(&locked_p.file)?;
-            let s = file_to_string(&locked_s.file)?;
+            let passwd_file_content = file_to_string(&locked_p.file)?;
+            let shadow_file_content = file_to_string(&locked_s.file)?;
             let _g = file_to_string(&locked_g.file)?;
-            {
-                let src = &self.source_hashes;
-                if src.passwd.has_changed(&p) | src.shadow.has_changed(&s) {
-                    error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
-                } else {
-                    // create the new content of passwd
-                    let modified_p = user.remove_in(&p);
 
-                    // write the new content to the file.
-                    let ncont = locked_p.replace_contents(modified_p);
-                    match ncont {
-                        Ok(_) => {
-                            let shad = user.get_shadow();
-                            match shad {
-                                Some(shadow) => {
-                                    let modified_s = shadow.remove_in(&s);
-                                    let ncont = locked_s.replace_contents(modified_s);
-                                    match ncont {
-                                        Ok(_) => (),
-                                        Err(e) => {
-                                            return Err(format!(
-                                                "Error during write to the database. \
-                                        Please doublecheck as the shadowdatabase could be corrupted: {}",
-                                                e,
-                                            )
-                                            .into());
-                                        }
-                                    }
-                                }
-                                None => (),
-                            }
-                            // Remove the user from the memory database(HashMap)
-                            let res = self.users.remove(username);
-                            return Ok(
-                                res.expect("Failed to remove the user from the internal HashMap")
-                            );
-                        }
-                        Err(e) => {
-                            return Err(format!(
-                                "Error during write to the database. \
-                        Please doublecheck as the userdatabase could be corrupted: {}",
-                                e,
-                            )
-                            .into());
-                        }
-                    }
-                }
+            let src = &self.source_hashes;
+            if src.passwd.has_changed(&passwd_file_content)
+                | src.shadow.has_changed(&shadow_file_content)
+            {
+                error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
                 Err(format!("The userdatabase has been changed {}", username).into())
+            } else {
+                UserDBLocal::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
+                UserDBLocal::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
+                // Remove the user from the memory database(HashMap)
+                let res = self.users.remove(username);
+                match res {
+                    Some(u) => Ok(u),
+                    None => Err("Failed to remove the user from the internal HashMap".into()),
+                }
             }
         }
     }
