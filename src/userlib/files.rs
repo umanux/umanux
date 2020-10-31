@@ -81,10 +81,14 @@ impl LockedFileGuard {
     }
 
     pub fn replace_contents(&mut self, new_content: String) -> Result<(), crate::UserLibError> {
-        self.file = File::create(&self.path).expect("Failed to truncate file.");
-        self.file
-            .write_all(&new_content.into_bytes())
-            .expect("Failed to write all users.");
+        self.file = match File::create(&self.path) {
+            Ok(file) => file,
+            Err(e) => return Err(("Failed to truncate file.".to_owned(), e).into()),
+        };
+        match self.file.write_all(&new_content.into_bytes()) {
+            Ok(_) => (),
+            Err(e) => return Err(("Could not write (all) users. ".to_owned(), e).into()),
+        };
         let _ = self.file.write("\n".as_bytes());
         Ok(())
     }
