@@ -56,6 +56,16 @@ pub struct Group {
     members: Vec<crate::Username>,        /* Real name.  */
 }
 
+impl Group {
+    pub fn remove_in(&self, content: &str) -> String {
+        content
+            .split(&self.source)
+            .map(|x| x.trim())
+            .collect::<Vec<&str>>()
+            .join("\n")
+    }
+}
+
 use crate::api::GroupRead;
 impl GroupRead for Group {
     #[must_use]

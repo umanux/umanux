@@ -113,6 +113,33 @@ impl UserDBLocal {
             None => Ok(()),
         }
     }
+
+    fn delete_from_group(
+        group: &crate::Group,
+        group_file_content: String,
+        locked_g: &mut files::LockedFileGuard,
+    ) -> Result<(), UserLibError> {
+        let modified_g = group.remove_in(&group_file_content);
+        let replace_result = locked_g.replace_contents(modified_g);
+        match replace_result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!(
+                "Error during write to the database. \
+            Please doublecheck as the groupdatabase could be corrupted: {}",
+                e,
+            )
+            .into()),
+        }
+    }
+
+    fn get_group_pos_by_id(&self, id: u32) -> Option<(&crate::Group, usize)> {
+        for (i, group) in self.groups.iter().enumerate() {
+            if group.get_gid()? == id {
+                return Some((group, i));
+            }
+        }
+        None
+    }
 }
 
 use crate::api::UserDBWrite;
@@ -136,12 +163,12 @@ impl UserDBWrite for UserDBLocal {
             }
         } else {
             let opened = self.source_files.lock_all_get();
-            let (mut locked_p, mut locked_s, locked_g) = opened.expect("failed to lock files!");
+            let (mut locked_p, mut locked_s, mut locked_g) = opened.expect("failed to lock files!");
 
             // read the files to strings
             let passwd_file_content = file_to_string(&locked_p.file)?;
             let shadow_file_content = file_to_string(&locked_s.file)?;
-            let _g = file_to_string(&locked_g.file)?;
+            let group_file_content = file_to_string(&locked_g.file)?;
 
             let src = &self.source_hashes;
             if src.passwd.has_changed(&passwd_file_content)
@@ -152,6 +179,33 @@ impl UserDBWrite for UserDBLocal {
             } else {
                 UserDBLocal::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
                 UserDBLocal::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
+                let group = self.get_group_pos_by_id(user.get_gid());
+                match group {
+                    Some((group, id)) => {
+                        if group
+                            .get_member_names()
+                            .expect("groups have to have members")
+                            .len()
+                            == 1
+                        {
+                            UserDBLocal::delete_from_group(
+                                group,
+                                group_file_content,
+                                &mut locked_g,
+                            )?;
+                            let _gres = self.groups.remove(id);
+                        } else {
+                            warn!(
+                                "The primary group {} was not empty and is thus not removed.",
+                                group.get_groupname().unwrap()
+                            );
+                        }
+                    }
+                    None => warn!(
+                        "The users primary group could not be found {}",
+                        user.get_gid()
+                    ),
+                }
                 // Remove the user from the memory database(HashMap)
                 let res = self.users.remove(username);
                 match res {
