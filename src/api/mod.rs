@@ -1,3 +1,6 @@
+pub mod newuser_args;
+
+pub use newuser_args::{DeleteHome, DeletePrimaryGroup, NewUserArgs};
 pub trait UserDBRead {
     fn get_all_users(&self) -> Vec<&crate::User>;
     fn get_user_by_name(&self, name: &str) -> Option<&crate::User>;
@@ -15,7 +18,10 @@ pub trait UserDBValidation {
 }
 
 pub trait UserDBWrite {
-    fn delete_user(&mut self, user: &str) -> Result<crate::User, crate::UserLibError>;
+    fn delete_user(
+        &mut self,
+        params: newuser_args::NewUserArgs,
+    ) -> Result<crate::User, crate::UserLibError>;
     fn new_user(
         &mut self, /*
                    username: String,

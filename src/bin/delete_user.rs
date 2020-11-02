@@ -20,7 +20,12 @@ fn main() {
 
     let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
 
-    let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user("teste");
+    let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user(
+        adduser::api::NewUserArgs::builder()
+            .username("teste")
+            .build()
+            .unwrap(),
+    );
     match user_res {
         Ok(u) => info!(
             "The user <{}> has been deleted! ",

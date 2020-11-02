@@ -144,9 +144,9 @@ impl UserDBLocal {
 
 use crate::api::UserDBWrite;
 impl UserDBWrite for UserDBLocal {
-    fn delete_user(&mut self, username: &str) -> Result<crate::User, UserLibError> {
+    fn delete_user(&mut self, args: crate::api::NewUserArgs) -> Result<crate::User, UserLibError> {
         // try to get the user from the database
-        let user_opt = self.get_user_by_name(username);
+        let user_opt = self.get_user_by_name(args.username);
         let user = match user_opt {
             Some(user) => user,
             None => {
@@ -156,7 +156,7 @@ impl UserDBWrite for UserDBLocal {
 
         if self.source_files.is_virtual() {
             warn!("There are no associated files working in dummy mode!");
-            let res = self.users.remove(username);
+            let res = self.users.remove(args.username);
             match res {
                 Some(u) => Ok(u),
                 None => Err(UserLibError::NotFound), // should not happen anymore as existence is checked.
@@ -175,7 +175,7 @@ impl UserDBWrite for UserDBLocal {
                 | src.shadow.has_changed(&shadow_file_content)
             {
                 error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
-                Err(format!("The userdatabase has been changed {}", username).into())
+                Err(format!("The userdatabase has been changed {}", args.username).into())
             } else {
                 UserDBLocal::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
                 UserDBLocal::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
@@ -207,7 +207,7 @@ impl UserDBWrite for UserDBLocal {
                     ),
                 }
                 // Remove the user from the memory database(HashMap)
-                let res = self.users.remove(username);
+                let res = self.users.remove(args.username);
                 match res {
                     Some(u) => Ok(u),
                     None => Err("Failed to remove the user from the internal HashMap".into()),
@@ -463,11 +463,16 @@ fn test_user_db_read_implementation() {
 
 #[test]
 fn test_user_db_write_implementation() {
+    use crate::api::NewUserArgs;
     let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
     let user = "test";
 
     assert_eq!(data.get_all_users().len(), 1);
-    assert!(data.delete_user(&user).is_ok());
-    assert!(data.delete_user(&user).is_err());
+    assert!(data
+        .delete_user(NewUserArgs::builder().username(&user).build().unwrap())
+        .is_ok());
+    assert!(data
+        .delete_user(NewUserArgs::builder().username(&user).build().unwrap())
+        .is_err());
     assert_eq!(data.get_all_users().len(), 0);
 }
