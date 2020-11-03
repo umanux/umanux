@@ -23,6 +23,7 @@ fn main() {
     let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user(
         adduser::api::NewUserArgs::builder()
             .username("teste")
+            // .delete_home(adduser::api::DeleteHome::Delete)
             .build()
             .unwrap(),
     );

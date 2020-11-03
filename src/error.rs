@@ -85,6 +85,12 @@ impl From<String> for UserLibError {
     }
 }
 
+impl From<std::io::Error> for UserLibError {
+    fn from(e: std::io::Error) -> Self {
+        UserLibError::Message(MyMessage::Simple(e.to_string()))
+    }
+}
+
 impl From<(String, std::io::Error)> for UserLibError {
     fn from((m, e): (String, std::io::Error)) -> Self {
         UserLibError::Message(MyMessage::IOError(m, e))

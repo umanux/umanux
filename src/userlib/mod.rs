@@ -132,6 +132,19 @@ impl UserDBLocal {
         }
     }
 
+    fn delete_home(user: &crate::User) -> std::io::Result<()> {
+        match user.get_home_dir() {
+            Some(dir) => std::fs::remove_dir_all(dir),
+            None => {
+                error!("Failed to remove the home directory! As the user did not have one.");
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Failed to remove the home directory! As the user did not have one.",
+                ))
+            }
+        }
+    }
+
     fn get_group_pos_by_id(&self, id: u32) -> Option<(&crate::Group, usize)> {
         for (i, group) in self.groups.iter().enumerate() {
             if group.get_gid()? == id {
@@ -142,9 +155,9 @@ impl UserDBLocal {
     }
 }
 
-use crate::api::UserDBWrite;
+use crate::api::{DeleteHome, DeletePrimaryGroup, NewUserArgs, UserDBRead, UserDBWrite};
 impl UserDBWrite for UserDBLocal {
-    fn delete_user(&mut self, args: crate::api::NewUserArgs) -> Result<crate::User, UserLibError> {
+    fn delete_user(&mut self, args: NewUserArgs) -> Result<crate::User, UserLibError> {
         // try to get the user from the database
         let user_opt = self.get_user_by_name(args.username);
         let user = match user_opt {
@@ -179,6 +192,9 @@ impl UserDBWrite for UserDBLocal {
             } else {
                 UserDBLocal::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
                 UserDBLocal::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
+                if args.delete_home == DeleteHome::Delete {
+                    UserDBLocal::delete_home(user)?;
+                }
                 let group = self.get_group_pos_by_id(user.get_gid());
                 match group {
                     Some((group, id)) => {
@@ -268,7 +284,6 @@ impl UserDBWrite for UserDBLocal {
     }
 }
 
-use crate::api::UserDBRead;
 impl UserDBRead for UserDBLocal {
     fn get_all_users(&self) -> Vec<&crate::User> {
         let mut res: Vec<&crate::User> = self.users.iter().map(|(_, x)| x).collect();

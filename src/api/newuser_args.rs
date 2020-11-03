@@ -1,20 +1,21 @@
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DeleteHome {
     Delete,
     Keep,
     Archive { path: PathBuf },
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DeletePrimaryGroup {
     Delete,
     Keep,
     DeleteIfEmpty,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Eq, PartialEq)]
 #[builder(public)]
+#[builder(default)]
 pub struct NewUserArgs<'a> {
     pub username: &'a str,
     pub delete_home: DeleteHome,
