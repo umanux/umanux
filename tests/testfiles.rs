@@ -5,14 +5,14 @@ use tempfile::TempDir;
 
 use std::ops::Deref;
 
-struct Fixture {
-    path: PathBuf,
-    source: PathBuf,
+pub struct Fixture {
+    pub path: PathBuf,
+    pub source: PathBuf,
     _tempdir: TempDir,
 }
 
 impl Fixture {
-    fn blank(fixture_filename: &str) -> Self {
+    pub fn blank(fixture_filename: &str) -> Self {
         // First, figure out the right file in `tests/fixtures/`:
         let root_dir = &env::var("CARGO_MANIFEST_DIR").expect("$CARGO_MANIFEST_DIR");
         let mut source = PathBuf::from(root_dir);
@@ -30,7 +30,7 @@ impl Fixture {
             path,
         }
     }
-    fn copy(fixture_filename: &str) -> Self {
+    pub fn copy(fixture_filename: &str) -> Self {
         let fixture = Fixture::blank(fixture_filename);
         fs::copy(&fixture.source, &fixture.path).unwrap();
         fixture

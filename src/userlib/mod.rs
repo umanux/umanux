@@ -155,7 +155,7 @@ impl UserDBLocal {
     }
 }
 
-use crate::api::{DeleteHome, DeletePrimaryGroup, NewUserArgs, UserDBRead, UserDBWrite};
+use crate::api::{DeleteHome, NewUserArgs, UserDBRead, UserDBWrite};
 impl UserDBWrite for UserDBLocal {
     fn delete_user(&mut self, args: NewUserArgs) -> Result<crate::User, UserLibError> {
         // try to get the user from the database
@@ -190,10 +190,10 @@ impl UserDBWrite for UserDBLocal {
                 error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
                 Err(format!("The userdatabase has been changed {}", args.username).into())
             } else {
-                UserDBLocal::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
-                UserDBLocal::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
+                Self::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
+                Self::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
                 if args.delete_home == DeleteHome::Delete {
-                    UserDBLocal::delete_home(user)?;
+                    Self::delete_home(user)?;
                 }
                 let group = self.get_group_pos_by_id(user.get_gid());
                 match group {
