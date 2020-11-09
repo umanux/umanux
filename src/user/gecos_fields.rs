@@ -1,3 +1,4 @@
+#![allow(clippy::non_ascii_literal)]
 use crate::UserLibError;
 use std::cmp::Eq;
 use std::convert::TryFrom;
@@ -26,19 +27,19 @@ impl Gecos {
     #[must_use]
     pub fn get_comment(&self) -> Option<&str> {
         match &self {
-            Gecos::Simple { comment, .. } => Some(&comment),
-            Gecos::Detail { .. } => None,
+            Self::Simple { comment, .. } => Some(comment),
+            Self::Detail { .. } => None,
         }
     }
     #[must_use]
     pub fn get_full_name(&self) -> Option<&str> {
         match &self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { full_name, .. } => {
+            Self::Simple { .. } => None,
+            Self::Detail { full_name, .. } => {
                 if full_name.is_empty() {
                     None
                 } else {
-                    Some(&full_name)
+                    Some(full_name)
                 }
             }
         }
@@ -46,12 +47,12 @@ impl Gecos {
     #[must_use]
     pub fn get_room(&self) -> Option<&str> {
         match &self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { room, .. } => {
+            Self::Simple { .. } => None,
+            Self::Detail { room, .. } => {
                 if room.is_empty() {
                     None
                 } else {
-                    Some(&room)
+                    Some(room)
                 }
             }
         }
@@ -59,12 +60,12 @@ impl Gecos {
     #[must_use]
     pub fn get_phone_work(&self) -> Option<&str> {
         match &self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_work, .. } => {
+            Self::Simple { .. } => None,
+            Self::Detail { phone_work, .. } => {
                 if phone_work.is_empty() {
                     None
                 } else {
-                    Some(&phone_work)
+                    Some(phone_work)
                 }
             }
         }
@@ -72,12 +73,12 @@ impl Gecos {
     #[must_use]
     pub fn get_phone_home(&self) -> Option<&str> {
         match &self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { phone_home, .. } => {
+            Self::Simple { .. } => None,
+            Self::Detail { phone_home, .. } => {
                 if phone_home.is_empty() {
                     None
                 } else {
-                    Some(&phone_home)
+                    Some(phone_home)
                 }
             }
         }
@@ -85,8 +86,8 @@ impl Gecos {
     #[must_use]
     pub const fn get_other(&self) -> Option<&Vec<String>> {
         match self {
-            Gecos::Simple { .. } => None,
-            Gecos::Detail { other, .. } => match other {
+            Self::Simple { .. } => None,
+            Self::Detail { other, .. } => match other {
                 None => None,
                 Some(comments) => Some(comments),
             },
@@ -97,8 +98,8 @@ impl Gecos {
 impl Display for Gecos {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            Gecos::Simple { comment } => write!(f, "{}", comment),
-            Gecos::Detail {
+            Self::Simple { comment } => write!(f, "{}", comment),
+            Self::Detail {
                 full_name,
                 room,
                 phone_work,
@@ -125,7 +126,7 @@ impl TryFrom<String> for Gecos {
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
         let vals: Vec<String> = source.split(',').map(ToString::to_string).collect();
         if vals.len() > 3 {
-            Ok(Gecos::Detail {
+            Ok(Self::Detail {
                 full_name: vals[0].clone(),
                 room: vals[1].clone(),
                 phone_work: vals[2].clone(),
@@ -137,7 +138,7 @@ impl TryFrom<String> for Gecos {
                 },
             })
         } else if vals.len() == 1 {
-            Ok(Gecos::Simple {
+            Ok(Self::Simple {
                 comment: vals.get(0).unwrap().into(),
             })
         } else {
@@ -145,7 +146,6 @@ impl TryFrom<String> for Gecos {
         }
     }
 }
-
 #[test]
 fn test_parse_gecos() {
     // test if the Gecos field can be parsed and the resulting struct is populated correctly.

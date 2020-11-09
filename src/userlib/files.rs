@@ -26,7 +26,8 @@ impl Default for Files {
 
 impl Files {
     /// Check if all the files are defined. Because some operations require the files to be present
-    pub fn is_virtual(&self) -> bool {
+    #[must_use]
+    pub const fn is_virtual(&self) -> bool {
         !(self.group.is_some() & self.passwd.is_some() & self.shadow.is_some())
     }
     pub fn lock_and_get_passwd(&self) -> Result<LockedFileGuard, crate::UserLibError> {
@@ -89,7 +90,7 @@ impl LockedFileGuard {
             Ok(_) => (),
             Err(e) => return Err(("Could not write (all) users. ".to_owned(), e).into()),
         };
-        let _ = self.file.write("\n".as_bytes());
+        let _ = self.file.write(b"\n");
         Ok(())
     }
 
@@ -155,12 +156,19 @@ impl LockedFileGuard {
         );
         // write the pid into the tempfile
         {
-            let mut tempfile = File::create(&*tempfilepath)
-                .expect(&format!("Failed to open {}", filename.to_str().unwrap()));
-            match write!(tempfile, "{}", pid) {
-                Ok(_) => {}
-                Err(_) => error!("could not write to {}", filename.to_string_lossy()),
-            };
+            let mut tempfile = File::create(&*tempfilepath).unwrap_or_else(|e| {
+                panic!("Failed to open {} error: {}", filename.to_str().unwrap(), e)
+            });
+            write!(tempfile, "{}", pid).or_else(|e| {
+                let error_msg = format!(
+                    "could not write to {} error {}",
+                    filename.to_string_lossy(),
+                    e
+                );
+                error!("{}", error_msg);
+                let err: crate::UserLibError = error_msg.into();
+                Err(err)
+            })?;
         }
 
         // try to make a hardlink from the lockfile to the tempfile
@@ -198,12 +206,9 @@ impl LockedFileGuard {
                             }
                         };
                         let mut content = String::new();
-                        match lf.read_to_string(&mut content) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                panic!("failed to read the lockfile{}", e);
-                            }
-                        }
+                        lf.read_to_string(&mut content)
+                            .unwrap_or_else(|e| panic!("failed to read the lockfile{}", e));
+
                         let content = content.trim().trim_matches(char::from(0));
                         let lock_pid = content.parse::<u32>();
                         match lock_pid {

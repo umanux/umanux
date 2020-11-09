@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt::{self, Display};
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     Username,
@@ -12,6 +13,7 @@ pub enum ParseError {
     ShellDir,
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq)]
 pub enum UserLibError {
     NotFound,
@@ -36,8 +38,8 @@ impl PartialEq for MyMessage {
 impl Display for MyMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MyMessage::Simple(m) => write!(f, "{}", m),
-            MyMessage::IOError(m, e) => write!(f, "{},{}", m, e),
+            Self::Simple(m) => write!(f, "{}", m),
+            Self::IOError(m, e) => write!(f, "{},{}", m, e),
         }
     }
 }
@@ -47,7 +49,7 @@ impl Display for UserLibError {
         match self {
             Self::NotFound => write!(f, "not found"),
             Self::ParseError => write!(f, "failed to parse"),
-            UserLibError::FilesRequired => write!(
+            Self::FilesRequired => write!(
                 f,
                 "File locking is only possible if some files are specified"
             ),
@@ -63,12 +65,12 @@ impl Display for UserLibError {
 impl Error for UserLibError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
-            UserLibError::NotFound
-            | UserLibError::ParseError
-            | UserLibError::FilesChanged
-            | UserLibError::FilesRequired => None,
-            UserLibError::Message(MyMessage::IOError(_, ref e)) => Some(e),
-            UserLibError::Message(MyMessage::Simple(_)) => None,
+            Self::NotFound
+            | Self::ParseError
+            | Self::FilesChanged
+            | Self::FilesRequired
+            | Self::Message(MyMessage::Simple(_)) => None,
+            Self::Message(MyMessage::IOError(_, ref e)) => Some(e),
         }
     }
 }
@@ -87,13 +89,13 @@ impl From<String> for UserLibError {
 
 impl From<std::io::Error> for UserLibError {
     fn from(e: std::io::Error) -> Self {
-        UserLibError::Message(MyMessage::Simple(e.to_string()))
+        Self::Message(MyMessage::Simple(e.to_string()))
     }
 }
 
 impl From<(String, std::io::Error)> for UserLibError {
     fn from((m, e): (String, std::io::Error)) -> Self {
-        UserLibError::Message(MyMessage::IOError(m, e))
+        Self::Message(MyMessage::IOError(m, e))
     }
 }
 /*

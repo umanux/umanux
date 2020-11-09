@@ -1,10 +1,3 @@
-#![warn(
-    clippy::all,
-/*    clippy::restriction,*/
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
 #![allow(clippy::non_ascii_literal)]
 
 use crate::userlib::NewFromString;
@@ -57,10 +50,11 @@ pub struct Group {
 }
 
 impl Group {
+    #[must_use]
     pub fn remove_in(&self, content: &str) -> String {
         content
             .split(&self.source)
-            .map(|x| x.trim())
+            .map(str::trim)
             .collect::<Vec<&str>>()
             .join("\n")
     }
@@ -75,7 +69,7 @@ impl GroupRead for Group {
     #[must_use]
     fn get_member_names(&self) -> Option<Vec<&str>> {
         let mut r: Vec<&str> = Vec::new();
-        for u in self.members.iter() {
+        for u in &self.members {
             r.push(&u.username);
         }
         Some(r)
@@ -128,7 +122,7 @@ impl NewFromString for Group {
         if elements.len() == 4 {
             Ok(Self {
                 pos: position,
-                source: line.clone(),
+                source: line,
                 groupname: Groupname::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Disabled,
                 gid: crate::Gid::try_from(elements.get(2).unwrap().to_string())?,

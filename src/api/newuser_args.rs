@@ -1,3 +1,4 @@
+#![allow(clippy::default_trait_access)]
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -12,7 +13,6 @@ pub enum DeletePrimaryGroup {
     Keep,
     DeleteIfEmpty,
 }
-
 #[derive(Debug, Builder, Eq, PartialEq)]
 #[builder(public)]
 #[builder(default)]
@@ -23,6 +23,7 @@ pub struct NewUserArgs<'a> {
 }
 
 impl<'a> NewUserArgs<'a> {
+    #[must_use]
     pub fn builder() -> NewUserArgsBuilder<'a> {
         NewUserArgsBuilder::default()
     }

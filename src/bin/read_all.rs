@@ -1,4 +1,5 @@
 extern crate adduser;
+use adduser::api::UserDBRead;
 
 fn main() {
     simplelog::CombinedLogger::init(vec![simplelog::TermLogger::new(
@@ -7,7 +8,6 @@ fn main() {
         simplelog::TerminalMode::Mixed,
     )])
     .unwrap();
-    use adduser::api::UserDBRead;
 
     let db = adduser::UserDBLocal::load_files(adduser::Files::default()).unwrap();
 

@@ -1,10 +1,3 @@
-#![warn(
-    clippy::all,
-/*    clippy::restriction,*/
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
 #![allow(clippy::non_ascii_literal)]
 
 use log::warn;
@@ -65,8 +58,7 @@ impl Display for Password {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Encrypted(EncryptedPassword { password }) => write!(f, "{}", password,),
-            Self::Shadow(_) => write!(f, "x"),
-            Self::Disabled => write!(f, "x"),
+            Self::Shadow(_) | Self::Disabled => write!(f, "x"),
         }
     }
 }
@@ -85,11 +77,11 @@ impl Display for EncryptedPassword {
 impl TryFrom<String> for EncryptedPassword {
     type Error = UserLibError;
     fn try_from(source: String) -> std::result::Result<Self, Self::Error> {
-        if source == "x" {
+        /*if source == "x" {
             //warn!("password from shadow not loaded!")
         } else {
             //warn!("Password field has an unexpected value")
-        };
+        };*/
         Ok(Self { password: source })
     }
 }
@@ -149,6 +141,7 @@ impl Gid {
         self.gid < 1000
     }
 
+    #[must_use]
     pub const fn get_gid(&self) -> u32 {
         self.gid
     }

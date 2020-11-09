@@ -17,8 +17,8 @@ fn test_test() {
 
     let mf = adduser::Files {
         passwd: Some(p.path.clone()),
-        shadow: Some(s.path.clone()),
-        group: Some(g.path.clone()),
+        shadow: Some(s.path),
+        group: Some(g.path),
     };
 
     let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
@@ -32,9 +32,9 @@ fn test_test() {
     );
     let pf2 = fs::read_to_string(&p.path).unwrap();
     assert_eq!(user_res.unwrap().get_username().unwrap(), "teste");
-    let pfl = pf.lines();
-    let pfl2 = pf2.lines();
-    for (l1, l2) in pfl.zip(pfl2) {
+    let pflines = pf.lines();
+    let pflines2 = pf2.lines();
+    for (l1, l2) in pflines.zip(pflines2) {
         if l1 != l2 {
             dbg!(l1, l2);
             assert!(l1.starts_with("teste"));

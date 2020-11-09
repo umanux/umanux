@@ -2,15 +2,15 @@ use std::path::PathBuf;
 
 extern crate adduser;
 
+use adduser::api::UserDBWrite;
+use adduser::api::UserRead;
+
 extern crate env_logger;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 fn main() {
     env_logger::init();
-
-    use adduser::api::UserDBWrite;
-    use adduser::api::UserRead;
 
     let mf = adduser::Files {
         passwd: Some(PathBuf::from("./passwd")),

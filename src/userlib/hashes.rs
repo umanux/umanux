@@ -5,11 +5,13 @@ pub struct SourceHash {
 }
 
 impl SourceHash {
+    #[must_use]
     pub fn new(src: &str) -> Self {
         Self {
             hashvalue: src.to_owned(),
         }
     }
+    #[must_use]
     pub fn has_changed(&self, new: &str) -> bool {
         trace!(
             "Old and new lengths: {}, {}",
@@ -27,6 +29,7 @@ pub struct Hashes {
 }
 
 impl Hashes {
+    #[must_use]
     pub fn new(passwd: &str, shadow: &str, group: &str) -> Self {
         Self {
             passwd: SourceHash::new(passwd),

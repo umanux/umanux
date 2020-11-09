@@ -12,6 +12,7 @@ pub struct Fixture {
 }
 
 impl Fixture {
+    #[must_use]
     pub fn blank(fixture_filename: &str) -> Self {
         // First, figure out the right file in `tests/fixtures/`:
         let root_dir = &env::var("CARGO_MANIFEST_DIR").expect("$CARGO_MANIFEST_DIR");
@@ -24,14 +25,15 @@ impl Fixture {
         let mut path = PathBuf::from(&tempdir.path());
         path.push(&fixture_filename);
 
-        Fixture {
+        Self {
             _tempdir: tempdir,
             source,
             path,
         }
     }
+    #[must_use]
     pub fn copy(fixture_filename: &str) -> Self {
-        let fixture = Fixture::blank(fixture_filename);
+        let fixture = Self::blank(fixture_filename);
         fs::copy(&fixture.source, &fixture.path).unwrap();
         fixture
     }
@@ -41,6 +43,6 @@ impl Deref for Fixture {
     type Target = Path;
 
     fn deref(&self) -> &Self::Target {
-        self.path.deref()
+        &self.path
     }
 }

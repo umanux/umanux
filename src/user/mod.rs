@@ -24,11 +24,11 @@ pub struct User {
 }
 
 impl User {
-    pub fn get_shadow(&self) -> Option<&crate::Shadow> {
+    #[must_use]
+    pub const fn get_shadow(&self) -> Option<&crate::Shadow> {
         match self.password {
-            crate::Password::Encrypted(_) => None,
+            crate::Password::Encrypted(_) | crate::Password::Disabled => None,
             crate::Password::Shadow(ref s) => Some(s),
-            crate::Password::Disabled => None,
         }
     }
     /*fn get_nth_line(content: &str, n: u32) -> (String, u64) {
@@ -49,17 +49,16 @@ impl User {
         trace!("Olduser:\n\t{}\nNewuser\n\t{}", &self.source, &line);
         (offset, line.len(), line == self.source)
     }*/
+    #[must_use]
     pub fn remove_in(&self, content: &str) -> String {
         content
             .split(&self.source)
-            .map(|x| x.trim())
+            .map(str::trim)
             .collect::<Vec<&str>>()
             .join("\n")
     }
     pub fn username(&mut self, name: String) -> &mut Self {
-        self.username = crate::Username {
-            username: name.into(),
-        };
+        self.username = crate::Username { username: name };
         self
     }
     pub fn disable_password(&mut self) -> &mut Self {
@@ -131,7 +130,7 @@ impl crate::api::UserRead for User {
     #[must_use]
     fn get_password(&self) -> Option<&str> {
         match &self.password {
-            crate::Password::Encrypted(crate::EncryptedPassword { password }) => Some(&password),
+            crate::Password::Encrypted(crate::EncryptedPassword { password }) => Some(password),
             crate::Password::Shadow(crate::Shadow { ref password, .. }) => Some(&password.password),
             crate::Password::Disabled => None,
         }
@@ -287,6 +286,7 @@ fn test_new_from_string() {
 #[test]
 fn test_parse_passwd() {
     // Test wether the passwd file can be parsed and recreated without throwing an exception
+    use std::convert::TryInto;
     use std::fs::File;
     use std::io::{prelude::*, BufReader};
     let file = File::open("/etc/passwd").unwrap();
@@ -295,7 +295,7 @@ fn test_parse_passwd() {
     for (n, line) in reader.lines().enumerate() {
         let lineorig: String = line.unwrap();
         let linecopy = lineorig.clone();
-        let pass_struc = User::new_from_string(linecopy, n as u32).unwrap();
+        let pass_struc = User::new_from_string(linecopy, n.try_into().unwrap()).unwrap();
         assert_eq!(
             // ignoring the numbers of `,` since the implementation does not (yet) reproduce a missing comment field.
             lineorig,

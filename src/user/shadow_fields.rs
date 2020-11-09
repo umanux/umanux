@@ -1,14 +1,4 @@
-#![warn(
-    clippy::all,
-/*    clippy::restriction,*/
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
-#![allow(clippy::non_ascii_literal)]
-
 use crate::userlib::NewFromString;
-use log::warn;
 
 use crate::UserLibError;
 use std::cmp::Eq;
@@ -40,10 +30,11 @@ impl Shadow {
     pub fn get_password(&self) -> &str {
         &self.password.password
     }
+    #[must_use]
     pub fn remove_in(&self, content: &str) -> String {
         content
             .split(&self.source)
-            .map(|x| x.trim())
+            .map(str::trim)
             .collect::<Vec<&str>>()
             .join("\n")
     }
@@ -108,7 +99,7 @@ impl NewFromString for Shadow {
             let extra = elements.get(8).unwrap();
             Ok(Self {
                 pos: position,
-                source: line.clone(),
+                source: line,
                 username: crate::Username::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::EncryptedPassword::try_from(elements.get(1).unwrap().to_string())?,
                 last_change: date_since_epoch(elements.get(2).unwrap()),

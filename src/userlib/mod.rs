@@ -1,10 +1,3 @@
-#![warn(
-    clippy::all,
-    //clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
 #![allow(clippy::non_ascii_literal)]
 
 pub mod files;
@@ -33,11 +26,11 @@ impl UserDBLocal {
         shadow_content: &str,
         group_content: &str,
     ) -> Self {
-        let shadow_entries: Vec<crate::Shadow> = string_to(&shadow_content);
-        let mut users = user_vec_to_hashmap(string_to(&passwd_content));
-        let groups = string_to(&group_content);
+        let shadow_entries: Vec<crate::Shadow> = string_to(shadow_content);
+        let mut users = user_vec_to_hashmap(string_to(passwd_content));
+        let groups = string_to(group_content);
         shadow_to_users(&mut users, shadow_entries);
-        let res = Self {
+        Self {
             source_files: files::Files {
                 passwd: None,
                 group: None,
@@ -45,13 +38,11 @@ impl UserDBLocal {
             },
             users,
             groups,
-            source_hashes: hashes::Hashes::new(&passwd_content, &shadow_content, &group_content),
-        };
-        res
+            source_hashes: hashes::Hashes::new(passwd_content, shadow_content, group_content),
+        }
     }
 
     /// Import the database from a [`Files`] struct
-    #[must_use]
     pub fn load_files(files: files::Files) -> Result<Self, crate::UserLibError> {
         // Get the Strings for the files use an inner block to drop references after read.
         let (my_passwd_lines, my_shadow_lines, my_group_lines) = {
@@ -77,10 +68,10 @@ impl UserDBLocal {
     }
     fn delete_from_passwd(
         user: &crate::User,
-        passwd_file_content: String,
+        passwd_file_content: &str,
         locked_p: &mut files::LockedFileGuard,
     ) -> Result<(), UserLibError> {
-        let modified_p = user.remove_in(&passwd_file_content);
+        let modified_p = user.remove_in(passwd_file_content);
 
         // write the new content to the file.
         let ncont = locked_p.replace_contents(modified_p);
@@ -92,13 +83,13 @@ impl UserDBLocal {
 
     fn delete_from_shadow(
         user: &crate::User,
-        shadow_file_content: String,
+        shadow_file_content: &str,
         locked_s: &mut files::LockedFileGuard,
     ) -> Result<(), UserLibError> {
         let shad = user.get_shadow();
         match shad {
             Some(shadow) => {
-                let modified_s = shadow.remove_in(&shadow_file_content);
+                let modified_s = shadow.remove_in(shadow_file_content);
                 let ncont = locked_s.replace_contents(modified_s);
                 match ncont {
                     Ok(_) => Ok(()),
@@ -116,10 +107,10 @@ impl UserDBLocal {
 
     fn delete_from_group(
         group: &crate::Group,
-        group_file_content: String,
+        group_file_content: &str,
         locked_g: &mut files::LockedFileGuard,
     ) -> Result<(), UserLibError> {
-        let modified_g = group.remove_in(&group_file_content);
+        let modified_g = group.remove_in(group_file_content);
         let replace_result = locked_g.replace_contents(modified_g);
         match replace_result {
             Ok(_) => Ok(()),
@@ -133,15 +124,15 @@ impl UserDBLocal {
     }
 
     fn delete_home(user: &crate::User) -> std::io::Result<()> {
-        match user.get_home_dir() {
-            Some(dir) => std::fs::remove_dir_all(dir),
-            None => {
-                error!("Failed to remove the home directory! As the user did not have one.");
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "Failed to remove the home directory! As the user did not have one.",
-                ))
-            }
+        if let Some(dir) = user.get_home_dir() {
+            std::fs::remove_dir_all(dir)
+        } else {
+            let error_msg = "Failed to remove the home directory! As the user did not have one.";
+            error!("{}", error_msg);
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                error_msg,
+            ))
         }
     }
 
@@ -190,8 +181,8 @@ impl UserDBWrite for UserDBLocal {
                 error!("The source files have changed. Deleting the user could corrupt the userdatabase. Aborting!");
                 Err(format!("The userdatabase has been changed {}", args.username).into())
             } else {
-                Self::delete_from_passwd(user, passwd_file_content, &mut locked_p)?;
-                Self::delete_from_shadow(user, shadow_file_content, &mut locked_s)?;
+                Self::delete_from_passwd(user, &passwd_file_content, &mut locked_p)?;
+                Self::delete_from_shadow(user, &shadow_file_content, &mut locked_s)?;
                 if args.delete_home == DeleteHome::Delete {
                     Self::delete_home(user)?;
                 }
@@ -206,7 +197,7 @@ impl UserDBWrite for UserDBLocal {
                         {
                             UserDBLocal::delete_from_group(
                                 group,
-                                group_file_content,
+                                &group_file_content,
                                 &mut locked_g,
                             )?;
                             let _gres = self.groups.remove(id);
@@ -297,9 +288,9 @@ impl UserDBRead for UserDBLocal {
 
     fn get_user_by_id(&self, uid: u32) -> Option<&crate::User> {
         // could probably be more efficient - on the other hand its no problem to loop a thousand users.
-        for (_, user) in self.users.iter() {
+        for user in self.users.values() {
             if user.get_uid() == uid {
-                return Some(&user);
+                return Some(user);
             }
         }
         None
@@ -310,7 +301,7 @@ impl UserDBRead for UserDBLocal {
     }
 
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {
-        for group in self.groups.iter() {
+        for group in &self.groups {
             if group.get_groupname()? == name {
                 return Some(group);
             }
@@ -319,7 +310,7 @@ impl UserDBRead for UserDBLocal {
     }
 
     fn get_group_by_id(&self, id: u32) -> Option<&crate::Group> {
-        for group in self.groups.iter() {
+        for group in &self.groups {
             if group.get_gid()? == id {
                 return Some(group);
             }
@@ -376,7 +367,7 @@ fn shadow_to_users(
     for pass in shadow {
         let user = users
             .get_mut(pass.get_username())
-            .expect(&format!("the user {} does not exist", pass.get_username()));
+            .unwrap_or_else(|| panic!("the user {} does not exist", pass.get_username()));
         user.password = crate::Password::Shadow(pass);
     }
     users
@@ -397,7 +388,7 @@ fn user_vec_to_hashmap(users: Vec<crate::User>) -> HashMap<String, crate::User> 
         .collect()
 }
 
-/// Try to parse a String into some Object
+/// Try to parse a String into some Object.
 ///
 /// # Errors
 /// if the parsing failed a [`UserLibError::Message`](crate::userlib_error::UserLibError::Message) is returned containing a more detailed error message.
@@ -412,12 +403,20 @@ fn string_to<T>(source: &str) -> Vec<T>
 where
     T: NewFromString,
 {
+    use std::convert::TryInto;
     source
         .lines()
         .enumerate()
         .filter_map(|(n, line)| {
             if line.len() > 5 {
-                Some(T::new_from_string(line.to_owned(), n as u32).expect("failed to read lines"))
+                Some(
+                    T::new_from_string(
+                        line.to_owned(),
+                        n.try_into()
+                            .unwrap_or_else(|e| panic!("Failed to convert usize to u32 {}", e)),
+                    )
+                    .expect("failed to read lines"),
+                )
             } else {
                 None
             }
@@ -484,10 +483,10 @@ fn test_user_db_write_implementation() {
 
     assert_eq!(data.get_all_users().len(), 1);
     assert!(data
-        .delete_user(NewUserArgs::builder().username(&user).build().unwrap())
+        .delete_user(NewUserArgs::builder().username(user).build().unwrap())
         .is_ok());
     assert!(data
-        .delete_user(NewUserArgs::builder().username(&user).build().unwrap())
+        .delete_user(NewUserArgs::builder().username(user).build().unwrap())
         .is_err());
     assert_eq!(data.get_all_users().len(), 0);
 }

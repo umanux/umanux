@@ -1,3 +1,12 @@
+#![warn(
+    clippy::all,
+    //clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
+)]
+//#![allow(clippy::non_ascii_literal)]
+
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
