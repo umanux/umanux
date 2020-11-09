@@ -2,7 +2,7 @@ extern crate adduser;
 mod testfiles;
 
 #[test]
-fn test_test() {
+fn test_delete_user_function() {
     use testfiles::Fixture;
 
     use adduser::api::UserDBWrite;
@@ -36,7 +36,6 @@ fn test_test() {
     let pflines2 = pf2.lines();
     for (l1, l2) in pflines.zip(pflines2) {
         if l1 != l2 {
-            dbg!(l1, l2);
             assert!(l1.starts_with("teste"));
             assert!(l2.starts_with("bergfried"));
             break;

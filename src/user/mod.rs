@@ -31,24 +31,6 @@ impl User {
             crate::Password::Shadow(ref s) => Some(s),
         }
     }
-    /*fn get_nth_line(content: &str, n: u32) -> (String, u64) {
-        use std::io::BufRead;
-        let mut cursor = std::io::Cursor::new(content);
-
-        let mut offset: u64 = 0;
-        let mut tmp = String::new();
-        for _ in 0..n + 1 {
-            tmp = String::new();
-            offset += cursor.read_line(&mut tmp).expect("failed to read line") as u64;
-            //trace!("reading user{}: {}", i, &tmp);
-        }
-        (tmp.trim().to_owned(), offset)
-    }
-    pub(crate) fn is_unchanged_in(&self, content: &str) -> (u64, usize, bool) {
-        let (line, offset) = Self::get_nth_line(content, self.pos);
-        trace!("Olduser:\n\t{}\nNewuser\n\t{}", &self.source, &line);
-        (offset, line.len(), line == self.source)
-    }*/
     #[must_use]
     pub fn remove_in(&self, content: &str) -> String {
         content
