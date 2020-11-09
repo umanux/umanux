@@ -67,6 +67,21 @@ pub struct LockedFileGuard {
     path: PathBuf,
     pub(crate) file: File,
 }
+struct TempLockFile {
+    tlf: PathBuf,
+}
+impl Drop for TempLockFile {
+    fn drop(&mut self) {
+        info!("removing temporary lockfile {}", self.tlf.to_str().unwrap());
+        std::fs::remove_file(&self.tlf).unwrap();
+    }
+}
+impl Deref for TempLockFile {
+    type Target = PathBuf;
+    fn deref(&self) -> &PathBuf {
+        &self.tlf
+    }
+}
 
 impl LockedFileGuard {
     pub fn new(path: &PathBuf) -> Result<Self, crate::UserLibError> {
@@ -118,22 +133,6 @@ impl LockedFileGuard {
     /// * try to lock again now that the old logfile has been safely removed.
     /// * remove the original file and only keep the lock hardlink
     fn try_to_lock_file(path: &PathBuf) -> Result<(PathBuf, File), crate::UserLibError> {
-        struct TempLockFile {
-            tlf: PathBuf,
-        }
-        impl Drop for TempLockFile {
-            fn drop(&mut self) {
-                info!("removing temporary lockfile {}", self.tlf.to_str().unwrap());
-                std::fs::remove_file(&self.tlf).unwrap();
-            }
-        }
-        impl Deref for TempLockFile {
-            type Target = PathBuf;
-            fn deref(&self) -> &PathBuf {
-                &self.tlf
-            }
-        }
-
         info!("locking file {}", path.to_string_lossy());
         let mut tempfilepath_const = path.clone();
         // get the pid

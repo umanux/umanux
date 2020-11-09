@@ -6,6 +6,7 @@
     clippy::cargo
 )]
 //#![allow(clippy::non_ascii_literal)]
+#![allow(clippy::missing_errors_doc)]
 
 #[macro_use]
 extern crate lazy_static;

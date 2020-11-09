@@ -187,31 +187,26 @@ impl UserDBWrite for UserDBLocal {
                     Self::delete_home(user)?;
                 }
                 let group = self.get_group_pos_by_id(user.get_gid());
-                match group {
-                    Some((group, id)) => {
-                        if group
-                            .get_member_names()
-                            .expect("groups have to have members")
-                            .len()
-                            == 1
-                        {
-                            UserDBLocal::delete_from_group(
-                                group,
-                                &group_file_content,
-                                &mut locked_g,
-                            )?;
-                            let _gres = self.groups.remove(id);
-                        } else {
-                            warn!(
-                                "The primary group {} was not empty and is thus not removed.",
-                                group.get_groupname().unwrap()
-                            );
-                        }
+                if let Some((group, id)) = group {
+                    if group
+                        .get_member_names()
+                        .expect("groups have to have members")
+                        .len()
+                        == 1
+                    {
+                        Self::delete_from_group(group, &group_file_content, &mut locked_g)?;
+                        let _gres = self.groups.remove(id);
+                    } else {
+                        warn!(
+                            "The primary group {} was not empty and is thus not removed.",
+                            group.get_groupname().unwrap()
+                        );
                     }
-                    None => warn!(
+                } else {
+                    warn!(
                         "The users primary group could not be found {}",
                         user.get_gid()
-                    ),
+                    )
                 }
                 // Remove the user from the memory database(HashMap)
                 let res = self.users.remove(args.username);
