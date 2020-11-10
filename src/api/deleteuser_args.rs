@@ -16,20 +16,20 @@ pub enum DeletePrimaryGroup {
 #[derive(Debug, Builder, Eq, PartialEq)]
 #[builder(public)]
 #[builder(default)]
-pub struct NewUserArgs<'a> {
+pub struct DeleteUserArgs<'a> {
     pub username: &'a str,
     pub delete_home: DeleteHome,
     pub delete_primary_group: DeletePrimaryGroup,
 }
 
-impl<'a> NewUserArgs<'a> {
+impl<'a> DeleteUserArgs<'a> {
     #[must_use]
-    pub fn builder() -> NewUserArgsBuilder<'a> {
-        NewUserArgsBuilder::default()
+    pub fn builder() -> DeleteUserArgsBuilder<'a> {
+        DeleteUserArgsBuilder::default()
     }
 }
 
-impl Default for NewUserArgs<'_> {
+impl Default for DeleteUserArgs<'_> {
     fn default() -> Self {
         Self {
             username: "defaultuser",

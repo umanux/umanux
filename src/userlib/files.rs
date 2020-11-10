@@ -1,12 +1,13 @@
-use std::path::PathBuf;
+use std::{io::Seek, io::SeekFrom, path::PathBuf};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::ops::Deref;
 
+#[derive(Debug)]
 pub struct Files {
     pub passwd: Option<PathBuf>,
     pub shadow: Option<PathBuf>,
@@ -62,14 +63,18 @@ impl Files {
     }
 }
 
+#[derive(Debug)]
 pub struct LockedFileGuard {
     lockfile: PathBuf,
     path: PathBuf,
     pub(crate) file: File,
 }
+
+#[derive(Debug)]
 struct TempLockFile {
     tlf: PathBuf,
 }
+
 impl Drop for TempLockFile {
     fn drop(&mut self) {
         info!("removing temporary lockfile {}", self.tlf.to_str().unwrap());
@@ -82,7 +87,6 @@ impl Deref for TempLockFile {
         &self.tlf
     }
 }
-
 impl LockedFileGuard {
     pub fn new(path: &PathBuf) -> Result<Self, crate::UserLibError> {
         let locked = Self::try_to_lock_file(path);
@@ -107,6 +111,27 @@ impl LockedFileGuard {
         };
         let _ = self.file.write(b"\n");
         Ok(())
+    }
+
+    pub fn append(&mut self, appendee: String) -> Result<(), crate::UserLibError> {
+        // Seek to the last character.
+        self.file.seek(SeekFrom::End(-1)).map_or_else(
+            |e| Err(format!("Failed to append to file {}", e)),
+            |_| Ok(()),
+        )?;
+        // Read the last character
+        let mut b = [0 as u8; 1];
+        self.file.read_exact(&mut b)?;
+        // Verify it is '\n' else append '\n' so in any case the file ends with with a newline now
+        if &b != b"\n" {
+            //self.file.write_all(&b)?;
+            self.file.write_all(b"\n")?;
+        }
+        // write the new line.
+        self.file.write_all(&appendee.into_bytes()).map_or_else(
+            |e| Err(("Failed to append to file".to_owned(), e).into()),
+            Ok,
+        )
     }
 
     /// This function tries to lock a file in the way other passwd locking mechanisms work.
@@ -177,7 +202,7 @@ impl LockedFileGuard {
                 debug!("successfully locked");
 
                 // open the file
-                let resfile = File::open(&path);
+                let resfile = OpenOptions::new().read(true).write(true).open(&path);
                 return match resfile {
                     Ok(file) => Ok((lockfilepath, file)),
                     Err(e) => {

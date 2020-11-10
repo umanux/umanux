@@ -1,15 +1,26 @@
+use std::path::PathBuf;
+
 extern crate adduser;
+use adduser::api::UserDBWrite;
 
 fn main() {
-    simplelog::CombinedLogger::init(vec![simplelog::TermLogger::new(
-        simplelog::LevelFilter::Warn,
-        simplelog::Config::default(),
-        simplelog::TerminalMode::Mixed,
-    )])
-    .unwrap();
-    //use adduser::api::UserDBWrite;
+    env_logger::init();
 
-    let _db = adduser::UserDBLocal::load_files(adduser::Files::default());
+    let mf = adduser::Files {
+        passwd: Some(PathBuf::from("./passwd")),
+        shadow: Some(PathBuf::from("./shadow")),
+        group: Some(PathBuf::from("./group")),
+    };
+
+    let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
+
+    let _user_res: Result<&adduser::User, adduser::UserLibError> = db.new_user(
+        adduser::api::CreateUserArgs::builder()
+            .username("teste")
+            // .delete_home(adduser::api::DeleteHome::Delete)
+            .build()
+            .unwrap(),
+    );
 
     let user = adduser::User::default()
         .username("fest".into())

@@ -3,8 +3,12 @@
 pub mod files;
 pub mod hashes;
 
-use crate::api::UserRead;
-use crate::{api::GroupRead, UserLibError};
+use crate::{
+    api::{
+        CreateUserArgs, DeleteHome, DeleteUserArgs, GroupRead, UserDBRead, UserDBWrite, UserRead,
+    },
+    UserLibError,
+};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use std::collections::HashMap;
@@ -146,9 +150,8 @@ impl UserDBLocal {
     }
 }
 
-use crate::api::{DeleteHome, NewUserArgs, UserDBRead, UserDBWrite};
 impl UserDBWrite for UserDBLocal {
-    fn delete_user(&mut self, args: NewUserArgs) -> Result<crate::User, UserLibError> {
+    fn delete_user(&mut self, args: DeleteUserArgs) -> Result<crate::User, UserLibError> {
         // try to get the user from the database
         let user_opt = self.get_user_by_name(args.username);
         let user = match user_opt {
@@ -218,47 +221,28 @@ impl UserDBWrite for UserDBLocal {
         }
     }
 
-    fn new_user(
-        &mut self, /*
-                   username: String,
-                   enc_password: String,
-                   uid: u32,
-                   gid: u32,
-                   full_name: String,
-                   room: String,
-                   phone_work: String,
-                   phone_home: String,
-                   other: Option<Vec<String>>,
-                   home_dir: String,
-                   shell_path: String,*/
-    ) -> Result<&crate::User, crate::UserLibError> {
-        /*if self.users.contains_key(&username) {
-            Err(format!(
-                "The username {} already exists! Aborting!",
-                username
-            )
-            .into())
+    fn new_user(&mut self, args: CreateUserArgs) -> Result<&crate::User, crate::UserLibError> {
+        if self.users.contains_key(args.username) {
+            Err(format!("The username {} already exists! Aborting!", args.username).into())
         } else {
-            let pwd = if self.source_files.shadow.is_none(){
-                crate::Password::Encrypted(crate::EncryptedPassword{});
+            let mut new_user = crate::User::default();
+            new_user.username(args.username.to_owned());
+            if self.users.contains_key(args.username) {
+                Err("Failed to create the user. A user with the same Name already exists".into())
+            } else {
+                let opened = self.source_files.lock_all_get();
+                let (mut locked_p, mut _locked_s, mut _locked_g) =
+                    opened.expect("failed to lock files!");
+                dbg!(&locked_p);
+                locked_p.append(format!("{}", new_user))?;
+                self.users
+                    .insert(args.username.to_owned(), new_user)
+                    .expect_none("Is always none");
+                self.users
+                    .get(args.username)
+                    .map_or_else(|| Err("User was not successfully added!".into()), Ok)
             }
-            else{
-                crate::Password::Shadow(crate::Shadow{})
-            }
-            self.users.insert(
-                username,
-                crate::User {
-                    username: crate::Username { username },
-                    password:,
-                    uid: crate::Uid{uid},
-                    gid:crate::Gid{gid},
-                    gecos: crate::Gecos{},
-                    home_dir:crate::HomeDir{dir: home_dir},
-                    shell_path: crate::ShellPath{shell: shell_path},
-                },
-            )
-        }*/
-        todo!()
+        }
     }
 
     fn delete_group(&mut self, _group: &crate::Group) -> Result<(), crate::UserLibError> {
@@ -472,16 +456,16 @@ fn test_user_db_read_implementation() {
 
 #[test]
 fn test_user_db_write_implementation() {
-    use crate::api::NewUserArgs;
+    use crate::api::DeleteUserArgs;
     let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
     let user = "test";
 
     assert_eq!(data.get_all_users().len(), 1);
     assert!(data
-        .delete_user(NewUserArgs::builder().username(user).build().unwrap())
+        .delete_user(DeleteUserArgs::builder().username(user).build().unwrap())
         .is_ok());
     assert!(data
-        .delete_user(NewUserArgs::builder().username(user).build().unwrap())
+        .delete_user(DeleteUserArgs::builder().username(user).build().unwrap())
         .is_err());
     assert_eq!(data.get_all_users().len(), 0);
 }

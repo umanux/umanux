@@ -1,3 +1,4 @@
+#![feature(option_expect_none)]
 #![warn(
     clippy::all,
     //clippy::restriction,
