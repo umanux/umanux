@@ -235,9 +235,10 @@ impl UserDBWrite for UserDBLocal {
                     opened.expect("failed to lock files!");
                 dbg!(&locked_p);
                 locked_p.append(format!("{}", new_user))?;
-                self.users
+                assert!(self
+                    .users
                     .insert(args.username.to_owned(), new_user)
-                    .expect_none("Is always none");
+                    .is_none());
                 self.users
                     .get(args.username)
                     .map_or_else(|| Err("User was not successfully added!".into()), Ok)

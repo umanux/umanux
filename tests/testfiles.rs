@@ -5,6 +5,7 @@ use tempfile::TempDir;
 
 use std::ops::Deref;
 
+#[derive(Debug)]
 pub struct Fixture {
     pub path: PathBuf,
     pub source: PathBuf,

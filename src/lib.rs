@@ -1,4 +1,3 @@
-#![feature(option_expect_none)]
 #![warn(
     clippy::all,
     //clippy::restriction,
@@ -8,6 +7,7 @@
 )]
 //#![allow(clippy::non_ascii_literal)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::clippy::multiple_crate_versions)]
 
 #[macro_use]
 extern crate lazy_static;

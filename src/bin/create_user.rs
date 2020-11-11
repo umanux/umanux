@@ -4,9 +4,9 @@ extern crate clap;
 use clap::{App, Arg};
 
 extern crate adduser;
-use adduser::api::UserDBWrite;
+use adduser::{api::UserDBWrite, UserLibError};
 
-fn main() {
+fn main() -> Result<(), UserLibError> {
     env_logger::init();
     let matches = App::new("Create a new linux user")
         .version("0.1.0")
@@ -14,8 +14,6 @@ fn main() {
         .about("Create a linux user do not use this in production (yet)")
         .arg(
             Arg::new("username")
-                .short('n')
-                .long("username")
                 .value_name("USERNAME")
                 .about("the new users name")
                 .takes_value(true)
@@ -54,20 +52,14 @@ fn main() {
 
     let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
 
-    let _user_res: Result<&adduser::User, adduser::UserLibError> = db.new_user(
+    match db.new_user(
         adduser::api::CreateUserArgs::builder()
             .username(matches.value_of("username").unwrap())
             // .delete_home(adduser::api::DeleteHome::Delete)
             .build()
             .unwrap(),
-    );
-
-    let user = adduser::User::default()
-        .username("fest".into())
-        .shell_path("/bin/mash".into())
-        .clone();
-
-    println!("{}", user);
-
-    //db.new_user().expect("failed to create the user");
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
 }

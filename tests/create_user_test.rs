@@ -52,6 +52,8 @@ fn test_create_user_binary() {
     let s = Fixture::copy("shadow");
     let g = Fixture::copy("group");
 
+    dbg!(&p, &s, &g);
+
     let pf = fs::read_to_string(&p.path).unwrap();
 
     let mf = adduser::Files {
