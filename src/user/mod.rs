@@ -41,6 +41,9 @@ impl User {
     }
     pub fn username(&mut self, name: String) -> &mut Self {
         self.username = crate::Username { username: name };
+        if let crate::Password::Shadow(ref mut s) = self.password {
+            s.set_username(self.username.clone());
+        }
         self
     }
     pub fn disable_password(&mut self) -> &mut Self {
@@ -178,13 +181,18 @@ impl Ord for User {
 
 impl Default for User {
     fn default() -> Self {
+        let username = passwd_fields::Username {
+            username: "defaultusername".to_owned(),
+        };
+        let line = "defaultusername:!!:0:0:99999:7:::";
+        let password = passwd_fields::Password::Shadow(
+            shadow_fields::Shadow::new_from_string(line.to_owned(), u32::MAX).unwrap(),
+        );
         Self {
             source: "".to_owned(),
             pos: u32::MAX,
-            username: crate::Username {
-                username: "defaultusername".to_owned(),
-            },
-            password: crate::Password::Disabled,
+            username,
+            password,
             uid: crate::Uid { uid: 1001 },
             gid: crate::Gid { gid: 1001 },
             gecos: crate::Gecos::Simple {
