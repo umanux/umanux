@@ -231,10 +231,16 @@ impl UserDBWrite for UserDBLocal {
                 Err("Failed to create the user. A user with the same Name already exists".into())
             } else {
                 let opened = self.source_files.lock_all_get();
-                let (mut locked_p, mut _locked_s, mut _locked_g) =
+                let (mut locked_p, mut locked_s, mut _locked_g) =
                     opened.expect("failed to lock files!");
-                dbg!(&locked_p);
+                //dbg!(&locked_p);
                 locked_p.append(format!("{}", new_user))?;
+                if let Some(shadow) = new_user.get_shadow() {
+                    info!("Adding shadow entry {}", shadow);
+                    locked_s.append(format!("{}", shadow))?;
+                } else {
+                    warn!("Omitting shadow entry!")
+                }
                 assert!(self
                     .users
                     .insert(args.username.to_owned(), new_user)

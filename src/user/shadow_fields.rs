@@ -26,6 +26,11 @@ impl Shadow {
     pub fn get_username(&self) -> &str {
         &self.username.username
     }
+
+    pub fn set_username(&mut self, username: crate::Username) {
+        self.username = username;
+    }
+
     #[must_use]
     pub fn get_password(&self) -> &str {
         &self.password.password
