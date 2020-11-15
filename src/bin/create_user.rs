@@ -18,36 +18,40 @@ fn main() -> Result<(), UserLibError> {
                 .about("the new users name")
                 .takes_value(true)
                 .required(true),
-        ) /*
-        .arg(
-            Arg::new("INPUT")
-                .about("Sets the input file to use")
-                .required(true)
-                .index(1),
         )
         .arg(
-            Arg::new("v")
-                .short('v')
-                .multiple(true)
-                .about("Sets the level of verbosity"),
+            Arg::new("passwd")
+                .short('p')
+                .long("passwd")
+                .value_name("FILE")
+                .about("The passwd file")
+                .default_value("/etc/passwd")
+                .takes_value(true),
         )
-        .subcommand(
-            App::new("test")
-                .about("controls testing features")
-                .version("1.3")
-                .author("Someone E. <someone_else@other.com>")
-                .arg(
-                    Arg::new("debug")
-                        .short('d')
-                        .about("print debug information verbosely"),
-                ),
-        )*/
+        .arg(
+            Arg::new("shadow")
+                .short('s')
+                .long("shadow")
+                .value_name("FILE")
+                .about("The shadow file")
+                .default_value("/etc/shadow")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("group")
+                .short('g')
+                .long("group")
+                .value_name("FILE")
+                .about("The group file")
+                .default_value("/etc/group")
+                .takes_value(true),
+        )
         .get_matches();
 
     let mf = adduser::Files {
-        passwd: Some(PathBuf::from("./passwd")),
-        shadow: Some(PathBuf::from("./shadow")),
-        group: Some(PathBuf::from("./group")),
+        passwd: Some(PathBuf::from(matches.value_of("passwd").unwrap())),
+        shadow: Some(PathBuf::from(matches.value_of("shadow").unwrap())),
+        group: Some(PathBuf::from(matches.value_of("group").unwrap())),
     };
 
     let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
