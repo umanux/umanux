@@ -120,7 +120,7 @@ impl LockedFileGuard {
             |_| Ok(()),
         )?;
         // Read the last character
-        let mut b = [0 as u8; 1];
+        let mut b = [0_u8; 1];
         self.file.read_exact(&mut b)?;
         // Verify it is '\n' else append '\n' so in any case the file ends with with a newline now
         if &b != b"\n" {
