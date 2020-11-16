@@ -1,6 +1,6 @@
 [package]
 name = "umanux"
-version = "0.1.0"
+version = "0.1.1"
 description = "Library for managing Linux users and their directories"
 authors = ["Dietrich <dietrich@teilgedanken.de>"]
 edition = "2018"
