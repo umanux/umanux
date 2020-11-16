@@ -2,6 +2,8 @@
 
 > This project is **very much** work in progress. Do **absolutely not** use in production systems!
 
+When done this library intends to provide all the functionality needed to manage users on a linux system.
+
 What is working so far:
   * Parsing:
     * `/etc/passwd`
