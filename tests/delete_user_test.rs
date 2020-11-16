@@ -1,13 +1,13 @@
-extern crate adduser;
+extern crate umanux;
 mod testfiles;
 
 #[test]
 fn test_delete_user_function() {
     use testfiles::Fixture;
 
-    use adduser::api::UserDBWrite;
-    use adduser::api::UserRead;
     use std::fs;
+    use umanux::api::UserDBWrite;
+    use umanux::api::UserRead;
 
     let p = Fixture::copy("passwd");
     let s = Fixture::copy("shadow");
@@ -15,18 +15,18 @@ fn test_delete_user_function() {
 
     let pf = fs::read_to_string(&p.path).unwrap();
 
-    let mf = adduser::Files {
+    let mf = umanux::Files {
         passwd: Some(p.path.clone()),
         shadow: Some(s.path),
         group: Some(g.path),
     };
 
-    let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
+    let mut db = umanux::UserDBLocal::load_files(mf).unwrap();
 
-    let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user(
-        adduser::api::DeleteUserArgs::builder()
+    let user_res: Result<umanux::User, umanux::UserLibError> = db.delete_user(
+        umanux::api::DeleteUserArgs::builder()
             .username("teste")
-            // .delete_home(adduser::api::DeleteHome::Delete)
+            // .delete_home(umanux::api::DeleteHome::Delete)
             .build()
             .unwrap(),
     );

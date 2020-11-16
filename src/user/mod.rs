@@ -73,9 +73,9 @@ impl NewFromString for User {
     ///
     /// # Example
     /// ```
-    /// use crate::adduser::api::UserRead;
-    /// use adduser::NewFromString;
-    /// let pwd = adduser::User::new_from_string(
+    /// use crate::umanux::api::UserRead;
+    /// use umanux::NewFromString;
+    /// let pwd = umanux::User::new_from_string(
     ///     "testuser:testpassword:1001:1001:full Name,,,,:/home/test:/bin/test".to_string(), 0).unwrap();
     /// assert_eq!(pwd.get_username().unwrap(), "testuser");
     /// ```

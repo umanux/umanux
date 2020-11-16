@@ -1,5 +1,5 @@
-extern crate adduser;
-use adduser::api::UserDBRead;
+extern crate umanux;
+use umanux::api::UserDBRead;
 
 fn main() {
     simplelog::CombinedLogger::init(vec![simplelog::TermLogger::new(
@@ -9,7 +9,7 @@ fn main() {
     )])
     .unwrap();
 
-    let db = adduser::UserDBLocal::load_files(adduser::Files::default()).unwrap();
+    let db = umanux::UserDBLocal::load_files(umanux::Files::default()).unwrap();
 
     for u in db.get_all_users() {
         println!("{}", u);

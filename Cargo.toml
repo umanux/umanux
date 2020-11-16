@@ -1,13 +1,13 @@
 [package]
-name = "adduser"
+name = "umanux"
 version = "0.1.0"
 description = "Library for managing Linux users and their directories"
 authors = ["Dietrich <dietrich@teilgedanken.de>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
-keywords = ["user", "admin", "linux", "manage"]
-categories = ["system-tools", "system-tools::user-management"]
-repository = "https://git.teilgedanken.de/Rust/useradd/"
+keywords = ["user", "admin", "linux", "manage", "passwd"]
+categories = ["os", "os::linux-apis", "parser-implementations", "command-line-utilities"]
+repository = "https://github.com/umanux/umanux"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

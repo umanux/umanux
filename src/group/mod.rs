@@ -106,9 +106,9 @@ impl NewFromString for Group {
     ///
     /// # Example
     /// ```
-    /// use crate::adduser::api::GroupRead;
-    /// use adduser::NewFromString;
-    /// let grp = adduser::Group::new_from_string(
+    /// use crate::umanux::api::GroupRead;
+    /// use umanux::NewFromString;
+    /// let grp = umanux::Group::new_from_string(
     ///     "teste:x:1002:test,teste".to_owned(),
     ///     0,
     /// ).unwrap();

@@ -3,8 +3,8 @@ use std::path::PathBuf;
 extern crate clap;
 use clap::{App, Arg};
 
-extern crate adduser;
-use adduser::{api::UserDBWrite, UserLibError};
+extern crate umanux;
+use umanux::{api::UserDBWrite, UserLibError};
 
 fn main() -> Result<(), UserLibError> {
     env_logger::init();
@@ -48,18 +48,18 @@ fn main() -> Result<(), UserLibError> {
         )
         .get_matches();
 
-    let mf = adduser::Files {
+    let mf = umanux::Files {
         passwd: Some(PathBuf::from(matches.value_of("passwd").unwrap())),
         shadow: Some(PathBuf::from(matches.value_of("shadow").unwrap())),
         group: Some(PathBuf::from(matches.value_of("group").unwrap())),
     };
 
-    let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
+    let mut db = umanux::UserDBLocal::load_files(mf).unwrap();
 
     match db.new_user(
-        adduser::api::CreateUserArgs::builder()
+        umanux::api::CreateUserArgs::builder()
             .username(matches.value_of("username").unwrap())
-            // .delete_home(adduser::api::DeleteHome::Delete)
+            // .delete_home(umanux::api::DeleteHome::Delete)
             .build()
             .unwrap(),
     ) {

@@ -88,8 +88,8 @@ impl NewFromString for Shadow {
     ///
     /// # Example
     /// ```
-    /// use adduser::NewFromString;
-    /// let shad = adduser::Shadow::new_from_string(
+    /// use umanux::NewFromString;
+    /// let shad = umanux::Shadow::new_from_string(
     ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string(),
     ///     0,
     /// ).unwrap();

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-extern crate adduser;
+extern crate umanux;
 
-use adduser::api::UserDBWrite;
-use adduser::api::UserRead;
+use umanux::api::UserDBWrite;
+use umanux::api::UserRead;
 
 extern crate env_logger;
 #[allow(unused_imports)]
@@ -12,18 +12,18 @@ use log::{debug, error, info, trace, warn};
 fn main() {
     env_logger::init();
 
-    let mf = adduser::Files {
+    let mf = umanux::Files {
         passwd: Some(PathBuf::from("./passwd")),
         shadow: Some(PathBuf::from("./shadow")),
         group: Some(PathBuf::from("./group")),
     };
 
-    let mut db = adduser::UserDBLocal::load_files(mf).unwrap();
+    let mut db = umanux::UserDBLocal::load_files(mf).unwrap();
 
-    let user_res: Result<adduser::User, adduser::UserLibError> = db.delete_user(
-        adduser::api::DeleteUserArgs::builder()
+    let user_res: Result<umanux::User, umanux::UserLibError> = db.delete_user(
+        umanux::api::DeleteUserArgs::builder()
             .username("teste")
-            // .delete_home(adduser::api::DeleteHome::Delete)
+            // .delete_home(umanux::api::DeleteHome::Delete)
             .build()
             .unwrap(),
     );
