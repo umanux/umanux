@@ -31,10 +31,10 @@ jobs:
       with:
         command: check
     - name: Annotate commit with clippy warnings
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features -W clippy::all -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::non_ascii_literal -A clippy::missing_errors_doc -A clippy::clippy::multiple_crate_versions
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features -W clippy::all -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::non_ascii_literal -A clippy::missing_errors_doc -A clippy::clippy::multiple_crate_versions
     - name: Run cargo Build
       uses: actions-rs/cargo@v1
       with:
