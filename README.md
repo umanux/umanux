@@ -1,4 +1,5 @@
-# Usermanager written in Rust
+# **U**ser **MAN**ager for lin**UX**
+### A Usermanager written in Rust
 
 > This project is **very much** work in progress. Do **absolutely not** use in production systems!
 
