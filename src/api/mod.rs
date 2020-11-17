@@ -7,7 +7,7 @@ pub trait UserDBRead {
     fn get_all_users(&self) -> Vec<&crate::User>;
     fn get_user_by_name(&self, name: &str) -> Option<&crate::User>;
     fn get_user_by_id(&self, uid: u32) -> Option<&crate::User>;
-    fn get_all_groups(&self) -> Vec<&crate::Group>;
+    fn get_all_groups(&self) -> Vec<crate::Group>;
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group>;
     fn get_group_by_id(&self, name: u32) -> Option<&crate::Group>;
 }

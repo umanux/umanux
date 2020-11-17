@@ -62,11 +62,12 @@ impl UserDBLocal {
 
         let mut users = user_vec_to_hashmap(string_to(&my_passwd_lines));
         let passwds: Vec<crate::Shadow> = string_to(&my_shadow_lines);
+        let groups: Vec<crate::Group> = string_to(&my_group_lines);
         shadow_to_users(&mut users, passwds);
         Ok(Self {
             source_files: files,
             users,
-            groups: string_to(&my_group_lines),
+            groups,
             source_hashes: hashes::Hashes::new(&my_passwd_lines, &my_shadow_lines, &my_group_lines),
         })
     }
@@ -282,8 +283,8 @@ impl UserDBRead for UserDBLocal {
         None
     }
 
-    fn get_all_groups(&self) -> Vec<&crate::Group> {
-        self.groups.iter().collect()
+    fn get_all_groups(&self) -> Vec<crate::Group> {
+        self.groups.iter().map(std::clone::Clone::clone).collect()
     }
 
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {

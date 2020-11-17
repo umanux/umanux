@@ -9,6 +9,12 @@ use log::{debug, error, info, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum GroupMembership {
+    Primary,
+    Member,
+}
+
 /// A record(line) in the user database `/etc/passwd` found in most linux systems.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct User {
@@ -21,6 +27,7 @@ pub struct User {
     gecos: crate::Gecos,                  /* Real name.  */
     home_dir: crate::HomeDir,             /* Home directory.  */
     shell_path: crate::ShellPath,         /* Shell program.  */
+    groups: Vec<(GroupMembership, crate::Group)>,
 }
 
 impl User {
@@ -100,6 +107,7 @@ impl NewFromString for User {
                 gecos: crate::Gecos::try_from(elements.get(4).unwrap().to_string())?,
                 home_dir: crate::HomeDir::try_from(elements.get(5).unwrap().to_string())?,
                 shell_path: crate::ShellPath::try_from(elements.get(6).unwrap().to_string())?,
+                groups: Vec::new(),
             })
         } else {
             Err("Failed to parse: not enough elements".into())
@@ -204,6 +212,7 @@ impl Default for User {
             shell_path: crate::ShellPath {
                 shell: "/bin/nologin".to_owned(),
             },
+            groups: Vec::new(),
         }
     }
 }

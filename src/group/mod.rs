@@ -4,9 +4,9 @@ use crate::userlib::NewFromString;
 use log::warn;
 
 use crate::UserLibError;
-use std::cmp::Eq;
 use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display};
+use std::{cmp::Eq, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Groupname {
@@ -38,9 +38,10 @@ pub(crate) fn is_groupname_valid(name: &str) -> bool {
     crate::user::passwd_fields::is_username_valid(name)
 }
 
+pub type Group = Rc<Inner>;
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Group {
+pub struct Inner {
     pos: u32,
     source: String,
     groupname: Groupname,                 /* Username.  */
@@ -49,7 +50,7 @@ pub struct Group {
     members: Vec<crate::Username>,        /* Real name.  */
 }
 
-impl Group {
+impl Inner {
     #[must_use]
     pub fn remove_in(&self, content: &str) -> String {
         content
@@ -61,7 +62,7 @@ impl Group {
 }
 
 use crate::api::GroupRead;
-impl GroupRead for Group {
+impl GroupRead for Inner {
     #[must_use]
     fn get_groupname(&self) -> Option<&str> {
         Some(&self.groupname.groupname)
@@ -84,7 +85,7 @@ impl GroupRead for Group {
     }
 }
 
-impl Display for Group {
+impl Display for Inner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -101,7 +102,7 @@ impl Display for Group {
     }
 }
 
-impl NewFromString for Group {
+impl NewFromString for Rc<Inner> {
     /// Parse a line formatted like one in `/etc/group` and construct a matching [`Group`] instance
     ///
     /// # Example
@@ -120,14 +121,14 @@ impl NewFromString for Group {
     fn new_from_string(line: String, position: u32) -> Result<Self, UserLibError> {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 4 {
-            Ok(Self {
+            Ok(Self::new(Inner {
                 pos: position,
                 source: line,
                 groupname: Groupname::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Disabled,
                 gid: crate::Gid::try_from(elements.get(2).unwrap().to_string())?,
                 members: parse_members_list(elements.get(3).unwrap()),
-            })
+            }))
         } else {
             Err(format!(
                 "Failed to parse: not enough elements ({}): {:?}",
@@ -156,7 +157,7 @@ fn parse_members_list(source: &str) -> Vec<crate::Username> {
 #[test]
 fn test_parse_and_back_identity() {
     let line = "teste:x:1002:test,teste";
-    let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
+    let line2: Group = Group::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(format!("{}", line2), line);
 }
 
