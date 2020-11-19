@@ -36,6 +36,7 @@ impl UserDBLocal {
         let mut users = user_vec_to_hashmap(string_to(passwd_content));
         let groups = string_to(group_content);
         shadow_to_users(&mut users, shadow_entries);
+        groups_to_users(&mut users, &groups);
         Self {
             source_files: files::Files {
                 passwd: None,
@@ -446,16 +447,20 @@ where
 
 #[test]
 fn test_creator_user_db_local() {
-    let data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::", "teste:x:1002:test,test");
+    let data = UserDBLocal::import_from_strings("test:x:1002:1002:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::", "teste:x:1002:\nanother:x:1003:test");
     assert_eq!(
         data.users.get("test").unwrap().get_username().unwrap(),
         "test"
     );
     for user in data.users.values() {
-        if let Some((member, group)) = user.get_groups().first() {
-            assert_eq!(*member, crate::group::Membership::Member);
-            assert_eq!(group.get_groupname(), Some("teste"));
-        }
+        dbg!(user.get_groups());
+        let (member_group1, group1) = user.get_groups().first().unwrap();
+        let (member_group2, group2) = user.get_groups().get(1).unwrap();
+
+        assert_eq!(*member_group1, crate::group::Membership::Member);
+        assert_eq!(group1.get_groupname(), Some("another"));
+        assert_eq!(*member_group2, crate::group::Membership::Primary);
+        assert_eq!(group2.get_groupname(), Some("teste"));
     }
 }
 
