@@ -90,7 +90,7 @@ impl NewFromString for Shadow {
     /// ```
     /// use umanux::NewFromString;
     /// let shad = umanux::Shadow::new_from_string(
-    ///     "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::".to_string(),
+    ///     "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::".to_string(),
     ///     0,
     /// ).unwrap();
     /// assert_eq!(shad.get_username(), "test");
@@ -152,7 +152,7 @@ fn duration_for_days(days_source: &str) -> Option<chrono::Duration> {
 
 #[test]
 fn test_parse_and_back_identity() {
-    let line = "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::";
+    let line = "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::";
     let line2 = Shadow::new_from_string(line.to_owned(), 0).unwrap();
     assert_eq!(format!("{}", line2), line);
 }

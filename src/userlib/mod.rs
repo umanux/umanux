@@ -15,10 +15,12 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+pub type UserList = HashMap<String, crate::User>;
+
 pub struct UserDBLocal {
     source_files: files::Files,
     source_hashes: hashes::Hashes, // to detect changes
-    pub users: HashMap<String, crate::User>,
+    pub users: UserList,
     pub groups: Vec<crate::Group>,
 }
 
@@ -64,6 +66,7 @@ impl UserDBLocal {
         let passwds: Vec<crate::Shadow> = string_to(&my_shadow_lines);
         let groups: Vec<crate::Group> = string_to(&my_group_lines);
         shadow_to_users(&mut users, passwds);
+        groups_to_users(&mut users, &groups);
         Ok(Self {
             source_files: files,
             users,
@@ -346,11 +349,41 @@ fn file_to_string(file: &File) -> Result<String, crate::UserLibError> {
     }
 }
 
+fn groups_to_users<'a>(users: &'a mut UserList, groups: &'a [crate::Group]) -> &'a mut UserList {
+    for group in groups {
+        match group.get_member_names() {
+            Some(usernames) => {
+                for username in usernames {
+                    if let Some(user) = users.get_mut(username) {
+                        user.add_group(crate::group::Membership::Member, group.clone());
+                    }
+                }
+            }
+            None => continue,
+        }
+    }
+    for user in users.values_mut() {
+        let gid = user.get_gid();
+        let grouplist: Vec<&crate::Group> = groups
+            .iter()
+            .filter(|g| g.get_gid().unwrap() == gid)
+            .collect();
+        if grouplist.len() == 1 {
+            let group = *grouplist.first().unwrap();
+            user.add_group(crate::group::Membership::Primary, group.clone());
+        } else {
+            error!(
+                "Somehow the group with gid {} was found {} times",
+                gid,
+                grouplist.len()
+            );
+        }
+    }
+    users
+}
+
 /// Merge the Shadow passwords into the users
-fn shadow_to_users(
-    users: &mut HashMap<String, crate::User>,
-    shadow: Vec<crate::Shadow>,
-) -> &mut HashMap<String, crate::User> {
+fn shadow_to_users(users: &mut UserList, shadow: Vec<crate::Shadow>) -> &mut UserList {
     for pass in shadow {
         let user = users
             .get_mut(pass.get_username())
@@ -360,8 +393,8 @@ fn shadow_to_users(
     users
 }
 
-/// Convert a `Vec<crate::User>` to a `HashMap<String, crate::User>` where the username is used as key
-fn user_vec_to_hashmap(users: Vec<crate::User>) -> HashMap<String, crate::User> {
+/// Convert a `Vec<crate::User>` to a `UserList` (`HashMap<String, crate::User>`) where the username is used as key
+fn user_vec_to_hashmap(users: Vec<crate::User>) -> UserList {
     users
         .into_iter()
         .map(|x| {
@@ -413,11 +446,17 @@ where
 
 #[test]
 fn test_creator_user_db_local() {
-    let data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
+    let data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::", "teste:x:1002:test,test");
     assert_eq!(
         data.users.get("test").unwrap().get_username().unwrap(),
         "test"
-    )
+    );
+    for user in data.users.values() {
+        if let Some((member, group)) = user.get_groups().first() {
+            assert_eq!(*member, crate::group::Membership::Member);
+            assert_eq!(group.get_groupname(), Some("teste"));
+        }
+    }
 }
 
 #[test]
@@ -465,7 +504,7 @@ fn test_user_db_read_implementation() {
 #[test]
 fn test_user_db_write_implementation() {
     use crate::api::DeleteUserArgs;
-    let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:!!$6$/RotIe4VZzzAun4W$7YUONvru1rDnllN5TvrnOMsWUD5wSDUPAD6t6/Xwsr/0QOuWF3HcfAhypRkGa8G1B9qqWV5kZSnCb8GKMN9N61:18260:0:99999:7:::", "teste:x:1002:test,test");
+    let mut data = UserDBLocal::import_from_strings("test:x:1001:1001:full Name,004,000342,001-2312,myemail@test.com:/home/test:/bin/test", "test:$6$u0Hh.9WKRF1Aeu4g$XqoDyL6Re/4ZLNQCGAXlNacxCxbdigexEqzFzkOVPV5Z1H23hlenjW8ZLgq6GQtFURYwenIFpo1c.r4aW9l5S/:18260:0:99999:7:::", "teste:x:1002:test,test");
     let user = "test";
 
     assert_eq!(data.get_all_users().len(), 1);

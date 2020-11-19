@@ -8,6 +8,12 @@ use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display};
 use std::{cmp::Eq, rc::Rc};
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Membership {
+    Primary,
+    Member,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Groupname {
     groupname: String,

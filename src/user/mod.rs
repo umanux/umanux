@@ -9,12 +9,6 @@ use log::{debug, error, info, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum GroupMembership {
-    Primary,
-    Member,
-}
-
 /// A record(line) in the user database `/etc/passwd` found in most linux systems.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct User {
@@ -27,7 +21,7 @@ pub struct User {
     gecos: crate::Gecos,                  /* Real name.  */
     home_dir: crate::HomeDir,             /* Home directory.  */
     shell_path: crate::ShellPath,         /* Shell program.  */
-    groups: Vec<(GroupMembership, crate::Group)>,
+    groups: Vec<(crate::group::Membership, crate::Group)>,
 }
 
 impl User {
@@ -72,6 +66,20 @@ impl User {
     pub fn shell_path(&mut self, path: String) -> &mut Self {
         self.shell_path = crate::ShellPath { shell: path };
         self
+    }
+
+    pub fn add_group(
+        &mut self,
+        group_type: crate::group::Membership,
+        group: crate::Group,
+    ) -> &mut Self {
+        self.groups.push((group_type, group));
+        self
+    }
+
+    #[must_use]
+    pub const fn get_groups(&self) -> &Vec<(crate::group::Membership, crate::Group)> {
+        &self.groups
     }
 }
 
