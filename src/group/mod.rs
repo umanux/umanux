@@ -4,14 +4,20 @@ use crate::userlib::NewFromString;
 use log::warn;
 
 use crate::UserLibError;
-use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display};
+use std::{cell::RefCell, convert::TryFrom};
 use std::{cmp::Eq, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Membership {
+pub enum MembershipKind {
     Primary,
     Member,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Membership {
+    kind: MembershipKind,
+    username: crate::Username,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -44,7 +50,7 @@ pub(crate) fn is_groupname_valid(name: &str) -> bool {
     crate::user::passwd_fields::is_username_valid(name)
 }
 
-pub type Group = Rc<Inner>;
+pub type Group = Rc<RefCell<Inner>>;
 /// A record(line) in the user database `/etc/shadow` found in most linux systems.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Inner {
@@ -53,7 +59,7 @@ pub struct Inner {
     groupname: Groupname,                 /* Username.  */
     pub(crate) password: crate::Password, /* Usually not used (disabled with x) */
     gid: crate::Gid,                      /* Group ID.  */
-    members: Vec<crate::Username>,        /* Real name.  */
+    members: Vec<Membership>,             /* Real name.  */
 }
 
 impl Inner {
@@ -64,6 +70,15 @@ impl Inner {
             .map(str::trim)
             .collect::<Vec<&str>>()
             .join("\n")
+    }
+
+    pub(super) fn append_user(&mut self, username: &str) {
+        self.members.push(Membership {
+            kind: MembershipKind::Primary,
+            username: crate::Username {
+                username: username.to_owned(),
+            },
+        })
     }
 }
 
@@ -77,7 +92,7 @@ impl GroupRead for Inner {
     fn get_member_names(&self) -> Option<Vec<&str>> {
         let mut r: Vec<&str> = Vec::new();
         for u in &self.members {
-            r.push(&u.username);
+            r.push(&u.username.username);
         }
         Some(r)
     }
@@ -101,14 +116,18 @@ impl Display for Inner {
             self.gid,
             self.members
                 .iter()
-                .map(|mem| format!("{}", mem))
+                .filter_map(|mem| if mem.kind == MembershipKind::Member {
+                    Some(format!("{}", mem.username))
+                } else {
+                    None
+                })
                 .collect::<Vec<String>>()
                 .join(",")
         )
     }
 }
 
-impl NewFromString for Rc<Inner> {
+impl NewFromString for Group {
     /// Parse a line formatted like one in `/etc/group` and construct a matching [`Group`] instance
     ///
     /// # Example
@@ -119,7 +138,7 @@ impl NewFromString for Rc<Inner> {
     ///     "teste:x:1002:test,teste".to_owned(),
     ///     0,
     /// ).unwrap();
-    /// assert_eq!(grp.get_groupname().unwrap(), "teste");
+    /// assert_eq!(grp.borrow().get_groupname().unwrap(), "teste");
     /// ```
     ///
     /// # Errors
@@ -127,14 +146,14 @@ impl NewFromString for Rc<Inner> {
     fn new_from_string(line: String, position: u32) -> Result<Self, UserLibError> {
         let elements: Vec<String> = line.split(':').map(ToString::to_string).collect();
         if elements.len() == 4 {
-            Ok(Self::new(Inner {
+            Ok(Self::new(RefCell::new(Inner {
                 pos: position,
                 source: line,
                 groupname: Groupname::try_from(elements.get(0).unwrap().to_string())?,
                 password: crate::Password::Disabled,
                 gid: crate::Gid::try_from(elements.get(2).unwrap().to_string())?,
                 members: parse_members_list(elements.get(3).unwrap()),
-            }))
+            })))
         } else {
             Err(format!(
                 "Failed to parse: not enough elements ({}): {:?}",
@@ -146,7 +165,7 @@ impl NewFromString for Rc<Inner> {
     }
 }
 
-fn parse_members_list(source: &str) -> Vec<crate::Username> {
+fn parse_members_list(source: &str) -> Vec<Membership> {
     let mut res = vec![];
     for mem in source.split(',').filter_map(|x| {
         if x.is_empty() {
@@ -155,7 +174,10 @@ fn parse_members_list(source: &str) -> Vec<crate::Username> {
             Some(x.to_string())
         }
     }) {
-        res.push(crate::Username::try_from(mem).expect("failed to parse username"));
+        res.push(Membership {
+            kind: MembershipKind::Member,
+            username: crate::Username::try_from(mem).expect("failed to parse username"),
+        });
     }
     res
 }
@@ -164,18 +186,18 @@ fn parse_members_list(source: &str) -> Vec<crate::Username> {
 fn test_parse_and_back_identity() {
     let line = "teste:x:1002:test,teste";
     let line2: Group = Group::new_from_string(line.to_owned(), 0).unwrap();
-    assert_eq!(format!("{}", line2), line);
+    assert_eq!(format!("{}", line2.borrow()), line);
 }
 
 #[test]
 fn test_groupname() {
     let line = "teste:x:1002:test,teste";
     let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
-    assert_eq!(line2.get_groupname().unwrap(), "teste");
+    assert_eq!(line2.borrow().get_groupname().unwrap(), "teste");
 }
 #[test]
 fn test_root_group() {
     let line = "root:x:0:";
     let line2 = Group::new_from_string(line.to_owned(), 0).unwrap();
-    assert_eq!(line2.get_groupname().unwrap(), "root");
+    assert_eq!(line2.borrow().get_groupname().unwrap(), "root");
 }

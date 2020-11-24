@@ -34,9 +34,9 @@ impl UserDBLocal {
     ) -> Self {
         let shadow_entries: Vec<crate::Shadow> = string_to(shadow_content);
         let mut users = user_vec_to_hashmap(string_to(passwd_content));
-        let groups = string_to(group_content);
+        let mut groups = string_to(group_content);
         shadow_to_users(&mut users, shadow_entries);
-        groups_to_users(&mut users, &groups);
+        groups_to_users(&mut users, &mut groups);
         Self {
             source_files: files::Files {
                 passwd: None,
@@ -65,9 +65,9 @@ impl UserDBLocal {
 
         let mut users = user_vec_to_hashmap(string_to(&my_passwd_lines));
         let passwds: Vec<crate::Shadow> = string_to(&my_shadow_lines);
-        let groups: Vec<crate::Group> = string_to(&my_group_lines);
+        let mut groups: Vec<crate::Group> = string_to(&my_group_lines);
         shadow_to_users(&mut users, passwds);
-        groups_to_users(&mut users, &groups);
+        groups_to_users(&mut users, &mut groups);
         Ok(Self {
             source_files: files,
             users,
@@ -119,7 +119,7 @@ impl UserDBLocal {
         group_file_content: &str,
         locked_g: &mut files::LockedFileGuard,
     ) -> Result<(), UserLibError> {
-        let modified_g = group.remove_in(group_file_content);
+        let modified_g = group.borrow().remove_in(group_file_content);
         let replace_result = locked_g.replace_contents(modified_g);
         match replace_result {
             Ok(_) => Ok(()),
@@ -147,7 +147,7 @@ impl UserDBLocal {
 
     fn get_group_pos_by_id(&self, id: u32) -> Option<(&crate::Group, usize)> {
         for (i, group) in self.groups.iter().enumerate() {
-            if group.get_gid()? == id {
+            if group.borrow().get_gid()? == id {
                 return Some((group, i));
             }
         }
@@ -197,6 +197,7 @@ impl UserDBWrite for UserDBLocal {
                 let group = self.get_group_pos_by_id(user.get_gid());
                 if let Some((group, id)) = group {
                     if group
+                        .borrow()
                         .get_member_names()
                         .expect("groups have to have members")
                         .len()
@@ -207,7 +208,7 @@ impl UserDBWrite for UserDBLocal {
                     } else {
                         warn!(
                             "The primary group {} was not empty and is thus not removed.",
-                            group.get_groupname().unwrap()
+                            group.borrow().get_groupname().unwrap()
                         );
                     }
                 } else {
@@ -293,7 +294,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_name(&self, name: &str) -> Option<&crate::Group> {
         for group in &self.groups {
-            if group.get_groupname()? == name {
+            if group.borrow().get_groupname()? == name {
                 return Some(group);
             }
         }
@@ -302,7 +303,7 @@ impl UserDBRead for UserDBLocal {
 
     fn get_group_by_id(&self, id: u32) -> Option<&crate::Group> {
         for group in &self.groups {
-            if group.get_gid()? == id {
+            if group.borrow().get_gid()? == id {
                 return Some(group);
             }
         }
@@ -326,7 +327,9 @@ impl UserDBValidation for UserDBLocal {
 
     fn is_gid_valid_and_free(&self, gid: u32) -> bool {
         warn!("No valid check, only free check");
-        self.groups.iter().all(|x| x.get_gid().unwrap() != gid)
+        self.groups
+            .iter()
+            .all(|x| x.borrow().get_gid().unwrap() != gid)
     }
 
     fn is_groupname_valid_and_free(&self, name: &str) -> bool {
@@ -334,7 +337,7 @@ impl UserDBValidation for UserDBLocal {
         let free = self
             .groups
             .iter()
-            .all(|x| x.get_groupname().unwrap() != name);
+            .all(|x| x.borrow().get_groupname().unwrap() != name);
         valid && free
     }
 }
@@ -350,28 +353,39 @@ fn file_to_string(file: &File) -> Result<String, crate::UserLibError> {
     }
 }
 
-fn groups_to_users<'a>(users: &'a mut UserList, groups: &'a [crate::Group]) -> &'a mut UserList {
-    for group in groups {
-        match group.get_member_names() {
+fn groups_to_users<'a>(
+    users: &'a mut UserList,
+    groups: &'a mut [crate::Group],
+) -> &'a mut UserList {
+    // Populate the regular groups
+
+    for group in groups.iter() {
+        match group.borrow().get_member_names() {
             Some(usernames) => {
                 for username in usernames {
                     if let Some(user) = users.get_mut(username) {
-                        user.add_group(crate::group::Membership::Member, group.clone());
+                        user.add_group(crate::group::MembershipKind::Member, group.clone());
                     }
                 }
             }
             None => continue,
         }
     }
+
+    // Populate the primary membership
     for user in users.values_mut() {
         let gid = user.get_gid();
         let grouplist: Vec<&crate::Group> = groups
             .iter()
-            .filter(|g| g.get_gid().unwrap() == gid)
+            .filter(|g| g.borrow().get_gid().unwrap() == gid)
             .collect();
         if grouplist.len() == 1 {
             let group = *grouplist.first().unwrap();
-            user.add_group(crate::group::Membership::Primary, group.clone());
+            group.borrow_mut().append_user(
+                user.get_username()
+                    .expect("Users without username are not supported"),
+            );
+            user.add_group(crate::group::MembershipKind::Primary, group.clone());
         } else {
             error!(
                 "Somehow the group with gid {} was found {} times",
@@ -457,10 +471,10 @@ fn test_creator_user_db_local() {
         let (member_group1, group1) = user.get_groups().first().unwrap();
         let (member_group2, group2) = user.get_groups().get(1).unwrap();
 
-        assert_eq!(*member_group1, crate::group::Membership::Member);
-        assert_eq!(group1.get_groupname(), Some("another"));
-        assert_eq!(*member_group2, crate::group::Membership::Primary);
-        assert_eq!(group2.get_groupname(), Some("teste"));
+        assert_eq!(*member_group1, crate::group::MembershipKind::Member);
+        assert_eq!(group1.borrow().get_groupname(), Some("another"));
+        assert_eq!(*member_group2, crate::group::MembershipKind::Primary);
+        assert_eq!(group2.borrow().get_groupname(), Some("teste"));
     }
 }
 
@@ -473,7 +487,15 @@ fn test_parsing_local_database() {
     let my_passwd_lines = file_to_string(&pwdfile).unwrap();
     let my_group_lines = file_to_string(&grpfile).unwrap();
     let data = UserDBLocal::import_from_strings(&my_passwd_lines, "", &my_group_lines);
-    assert_eq!(data.groups.get(0).unwrap().get_groupname().unwrap(), "root");
+    assert_eq!(
+        data.groups
+            .get(0)
+            .unwrap()
+            .borrow()
+            .get_groupname()
+            .unwrap(),
+        "root"
+    );
 }
 
 #[test]
@@ -495,11 +517,19 @@ fn test_user_db_read_implementation() {
     assert!(data.get_all_groups().len() > 10);
     assert!(data.get_group_by_name("root").is_some());
     assert_eq!(
-        data.get_group_by_name("root").unwrap().get_gid().unwrap(),
+        data.get_group_by_name("root")
+            .unwrap()
+            .borrow()
+            .get_gid()
+            .unwrap(),
         0
     );
     assert_eq!(
-        data.get_group_by_id(0).unwrap().get_groupname().unwrap(),
+        data.get_group_by_id(0)
+            .unwrap()
+            .borrow()
+            .get_groupname()
+            .unwrap(),
         "root"
     );
     assert!(data.get_user_by_name("norealnameforsure").is_none());

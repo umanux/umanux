@@ -21,7 +21,7 @@ pub struct User {
     gecos: crate::Gecos,                  /* Real name.  */
     home_dir: crate::HomeDir,             /* Home directory.  */
     shell_path: crate::ShellPath,         /* Shell program.  */
-    groups: Vec<(crate::group::Membership, crate::Group)>,
+    groups: Vec<(crate::group::MembershipKind, crate::Group)>,
 }
 
 impl User {
@@ -70,7 +70,7 @@ impl User {
 
     pub fn add_group(
         &mut self,
-        group_type: crate::group::Membership,
+        group_type: crate::group::MembershipKind,
         group: crate::Group,
     ) -> &mut Self {
         self.groups.push((group_type, group));
@@ -78,7 +78,7 @@ impl User {
     }
 
     #[must_use]
-    pub const fn get_groups(&self) -> &Vec<(crate::group::Membership, crate::Group)> {
+    pub const fn get_groups(&self) -> &Vec<(crate::group::MembershipKind, crate::Group)> {
         &self.groups
     }
 }

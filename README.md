@@ -9,7 +9,7 @@ What is working so far:
   * Parsing:
     * `/etc/passwd`
     * `/etc/shadow` (root permission needed)
-    * `/etc/group` (not yet really assigned to the users)
+    * `/etc/group`
   * Modifying:
     * delete a user
         * [x] passwd
