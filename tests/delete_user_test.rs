@@ -18,7 +18,7 @@ fn test_delete_user_function() {
     let mf = umanux::Files {
         passwd: Some(p.path.clone()),
         shadow: Some(s.path),
-        group: Some(g.path),
+        group: Some(g.path.clone()),
     };
 
     let mut db = umanux::UserDBLocal::load_files(mf).unwrap();
@@ -34,11 +34,20 @@ fn test_delete_user_function() {
     assert_eq!(user_res.unwrap().get_username().unwrap(), "teste");
     let pflines = pf.lines();
     let pflines2 = pf2.lines();
-    for (l1, l2) in pflines.zip(pflines2) {
+    for (l1, l2) in pflines.zip(pflines2.clone()) {
         if l1 != l2 {
             assert!(l1.starts_with("teste"));
             assert!(l2.starts_with("bergfried"));
             break;
         }
+    }
+    for line in pflines2 {
+        assert!(!line.starts_with("teste"))
+    }
+    let gf2 = fs::read_to_string(&g.path).unwrap();
+    let gflines2 = gf2.lines();
+    for line in gflines2 {
+        println!("{}", &line);
+        assert!(!line.ends_with("teste"))
     }
 }
