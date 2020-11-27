@@ -7,6 +7,7 @@ use crate::{
     api::{
         CreateUserArgs, DeleteHome, DeleteUserArgs, GroupRead, UserDBRead, UserDBWrite, UserRead,
     },
+    group::MembershipKind,
     UserLibError,
 };
 #[allow(unused_imports)]
@@ -132,6 +133,25 @@ impl UserDBLocal {
         }
     }
 
+    fn write_groups(&self, locked_g: &mut files::LockedFileGuard) -> Result<(), UserLibError> {
+        let content = self
+            .groups
+            .iter()
+            .map(|g| (g.borrow().to_string()))
+            .collect::<Vec<String>>()
+            .join("\n");
+        let replace_result = locked_g.replace_contents(content);
+        match replace_result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!(
+                "Error during write to the database. \
+            Please doublecheck as the groupdatabase could be corrupted: {}",
+                e,
+            )
+            .into()),
+        }
+    }
+
     fn delete_home(user: &crate::User) -> std::io::Result<()> {
         if let Some(dir) = user.get_home_dir() {
             std::fs::remove_dir_all(dir)
@@ -145,13 +165,9 @@ impl UserDBLocal {
         }
     }
 
-    fn get_group_pos_by_id(&self, id: u32) -> Option<(&crate::Group, usize)> {
-        for (i, group) in self.groups.iter().enumerate() {
-            if group.borrow().get_gid()? == id {
-                return Some((group, i));
-            }
-        }
-        None
+    fn delete_group_by_id(&mut self, gid: u32) {
+        self.groups
+            .retain(|g| g.borrow().get_gid().expect("groups have to have a gid") != gid);
     }
 }
 
@@ -194,28 +210,65 @@ impl UserDBWrite for UserDBLocal {
                 if args.delete_home == DeleteHome::Delete {
                     Self::delete_home(user)?;
                 }
-                let group = self.get_group_pos_by_id(user.get_gid());
-                if let Some((group, id)) = group {
-                    if group
-                        .borrow()
-                        .get_member_names()
-                        .expect("groups have to have members")
-                        .len()
-                        == 1
-                    {
-                        Self::delete_from_group(group, &group_file_content, &mut locked_g)?;
-                        let _gres = self.groups.remove(id);
-                    } else {
-                        warn!(
-                            "The primary group {} was not empty and is thus not removed.",
-                            group.borrow().get_groupname().unwrap()
-                        );
+                println!("The users groups: {:#?}", user.get_groups());
+                // Iterate over the GIDs to avoid borrowing issues
+                let users_groups: Vec<(MembershipKind, u32)> = user
+                    .get_groups()
+                    .iter()
+                    .map(|(k, g)| (*k, g.borrow().get_gid().unwrap()))
+                    .collect();
+                for (kind, group) in users_groups {
+                    println!("Woring on group: {:?} - {}", kind, group);
+                    match kind {
+                        crate::group::MembershipKind::Primary => {
+                            if self
+                                .get_group_by_id(group)
+                                .expect("The group does not exist")
+                                .borrow()
+                                .get_member_names()
+                                .expect("this group allways has a member")
+                                .len()
+                                == 1
+                            {
+                                println!(
+                                    "Deleting group as the user to be deleted is the only member {:?}", self
+                                    .get_group_by_id(group)
+                                    .expect("The group does not exist")
+                                    .borrow()
+                                    .get_member_names()
+                                );
+                                Self::delete_from_group(
+                                    self.get_group_by_id(group)
+                                        .expect("The group does not exist"),
+                                    &group_file_content,
+                                    &mut locked_g,
+                                )?;
+                                let _gres = self.delete_group_by_id(group);
+                            } else {
+                                println!("Do not delete the group as the user to be deleted is not the only member");
+                                // remove the from the group instead of deleting the group if he was not the only user in its primary group.
+                                if let Some(group) = self.get_group_by_id(group) {
+                                    group
+                                        .borrow_mut()
+                                        .remove_member(MembershipKind::Primary, args.username)
+                                };
+                                self.write_groups(&mut locked_g)?;
+                                warn!(
+                                    "The primary group (GID: {}) was not empty and is thus not removed. Only the membership has been removed",
+                                    group
+                                );
+                            }
+                        }
+                        crate::group::MembershipKind::Member => {
+                            println!("delete the membership in the group");
+                            if let Some(group) = self.get_group_by_id(group) {
+                                group
+                                    .borrow_mut()
+                                    .remove_member(MembershipKind::Member, args.username)
+                            };
+                            self.write_groups(&mut locked_g)?;
+                        }
                     }
-                } else {
-                    warn!(
-                        "The users primary group could not be found {}",
-                        user.get_gid()
-                    )
                 }
                 // Remove the user from the memory database(HashMap)
                 let res = self.users.remove(args.username);

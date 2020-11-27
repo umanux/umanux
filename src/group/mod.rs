@@ -80,6 +80,11 @@ impl Inner {
             },
         })
     }
+
+    pub(super) fn remove_member(&mut self, kind: MembershipKind, username: &str) {
+        self.members
+            .retain(|u| !(u.username.username == username && u.kind == kind))
+    }
 }
 
 use crate::api::GroupRead;

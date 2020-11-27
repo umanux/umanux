@@ -6,17 +6,18 @@
 When done this library intends to provide all the functionality needed to manage users on a linux system.
 
 What is working so far:
-  * Parsing:
-    * `/etc/passwd`
-    * `/etc/shadow` (root permission needed)
-    * `/etc/group`
+  * [x] Parsing:
+    * [x] `/etc/passwd`
+    * [x] `/etc/shadow` (root permission needed)
+    * [x] `/etc/group`
+
   * Modifying:
     * delete a user
         * [x] passwd
         * [x] shadow
         * [X] group
-            * [x] own group
-            * [ ] member
+            * [x] own primary group
+            * [x] membership in other groups
         * [x] home dir
             * [x] delete
             * [x] keep
@@ -32,7 +33,6 @@ What is working so far:
         - [x] shadow
         - [ ] group
             - [ ] own group
-            - [ ] member
         - [ ] home dir
             - [ ] create from skeleton
             - [ ] Skip
