@@ -44,9 +44,9 @@ fn test_delete_user_function() {
     for line in pflines2 {
         assert!(!line.starts_with("teste"))
     }
-    let gf2 = fs::read_to_string(&g.path).unwrap();
-    let gflines2 = gf2.lines();
-    for line in gflines2 {
+    let groupfile2 = fs::read_to_string(&g.path).unwrap();
+    let groupfilelines2 = groupfile2.lines();
+    for line in groupfilelines2 {
         println!("{}", &line);
         assert!(!line.ends_with("teste"))
     }
