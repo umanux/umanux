@@ -243,7 +243,7 @@ impl UserDBWrite for UserDBLocal {
                                     &group_file_content,
                                     &mut locked_g,
                                 )?;
-                                let _gres = self.delete_group_by_id(group);
+                                self.delete_group_by_id(group);
                             } else {
                                 println!("Do not delete the group as the user to be deleted is not the only member");
                                 // remove the from the group instead of deleting the group if he was not the only user in its primary group.
