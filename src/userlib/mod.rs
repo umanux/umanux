@@ -210,7 +210,7 @@ impl UserDBWrite for UserDBLocal {
                 if args.delete_home == DeleteHome::Delete {
                     Self::delete_home(user)?;
                 }
-                println!("The users groups: {:#?}", user.get_groups());
+                trace!("The users groups: {:#?}", user.get_groups());
                 // Iterate over the GIDs to avoid borrowing issues
                 let users_groups: Vec<(MembershipKind, u32)> = user
                     .get_groups()
@@ -218,7 +218,7 @@ impl UserDBWrite for UserDBLocal {
                     .map(|(k, g)| (*k, g.borrow().get_gid().unwrap()))
                     .collect();
                 for (kind, group) in users_groups {
-                    println!("Woring on group: {:?} - {}", kind, group);
+                    trace!("Woring on group: {:?} - {}", kind, group);
                     match kind {
                         crate::group::MembershipKind::Primary => {
                             if self
@@ -230,12 +230,12 @@ impl UserDBWrite for UserDBLocal {
                                 .len()
                                 == 1
                             {
-                                println!(
-                                    "Deleting group as the user to be deleted is the only member {:?}", self
+                                trace!(
+                                    "Deleting group as the user to be deleted is the only member {}", self
                                     .get_group_by_id(group)
                                     .expect("The group does not exist")
                                     .borrow()
-                                    .get_member_names()
+                                    .get_groupname().expect("a group has to have a name")
                                 );
                                 Self::delete_from_group(
                                     self.get_group_by_id(group)
@@ -245,7 +245,6 @@ impl UserDBWrite for UserDBLocal {
                                 )?;
                                 self.delete_group_by_id(group);
                             } else {
-                                println!("Do not delete the group as the user to be deleted is not the only member");
                                 // remove the from the group instead of deleting the group if he was not the only user in its primary group.
                                 if let Some(group) = self.get_group_by_id(group) {
                                     group
@@ -260,7 +259,7 @@ impl UserDBWrite for UserDBLocal {
                             }
                         }
                         crate::group::MembershipKind::Member => {
-                            println!("delete the membership in the group");
+                            trace!("delete the membership in the group");
                             if let Some(group) = self.get_group_by_id(group) {
                                 group
                                     .borrow_mut()
